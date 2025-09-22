@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     API_V1_STR: str = Field(default="/api/v1", description="API v1 prefix")
-    PROJECT_NAME: str = Field(default="IAC API", description="Project name")
+    PROJECT_NAME: str = Field(default="API", description="Project name")
     PROJECT_VERSION: str = Field(default="0.1.0", description="Project version")
 
     # Security
@@ -89,11 +89,6 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQUESTS: int = Field(
         default=100, description="Requests per minute"
     )
-
-    class Config:
-        """Pydantic config."""
-
-        case_sensitive = True
 
 
 # Create settings instance
