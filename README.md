@@ -1,6 +1,6 @@
-# IAC API
+# FastAPI Boiler Plate
 
-A modern, production-ready FastAPI REST API for Infrastructure as Code operations.
+A modern, production-ready FastAPI REST API.
 
 ## 🚀 Features
 
