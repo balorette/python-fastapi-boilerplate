@@ -12,21 +12,35 @@ from app.core.config import settings
 # Base class for models
 Base = declarative_base()
 
+# Configure engine settings based on database type
+engine_kwargs = {"echo": settings.DEBUG}
+async_engine_kwargs = {"echo": settings.DEBUG}
+
+if settings.is_sqlite:
+    # SQLite specific settings
+    engine_kwargs.update({
+        "connect_args": {"check_same_thread": False},
+        "pool_pre_ping": True,
+    }) # type: ignore
+    async_engine_kwargs.update({
+        "connect_args": {"check_same_thread": False},
+    }) # type: ignore
+elif settings.is_postgresql:
+    # PostgreSQL specific settings
+    engine_kwargs.update({
+        "pool_pre_ping": True,
+    })
+    async_engine_kwargs.update({
+        "pool_pre_ping": True,
+    })
+
 # Sync engine and session
-engine = create_engine(
-    str(settings.DATABASE_URL),
-    pool_pre_ping=True,
-    echo=settings.DEBUG,
-)
+engine = create_engine(str(settings.DATABASE_URL), **engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Async engine and session
-async_engine = create_async_engine(
-    str(settings.DATABASE_URL_ASYNC),
-    pool_pre_ping=True,
-    echo=settings.DEBUG,
-)
+async_engine = create_async_engine(str(settings.DATABASE_URL_ASYNC), **async_engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
     async_engine,

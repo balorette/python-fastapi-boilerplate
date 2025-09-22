@@ -33,12 +33,26 @@ class Settings(BaseSettings):
     )
 
     # Database
-    DATABASE_URL: Optional[PostgresDsn] = Field(
-        default=None, description="Database URL"
+    DATABASE_URL: Optional[Union[PostgresDsn, str]] = Field(
+        default="sqlite:///./app.db", description="Database URL"
     )
-    DATABASE_URL_ASYNC: Optional[PostgresDsn] = Field(
-        default=None, description="Async database URL"
+    DATABASE_URL_ASYNC: Optional[Union[PostgresDsn, str]] = Field(
+        default="sqlite+aiosqlite:///./app.db", description="Async database URL"
     )
+
+    @property
+    def is_sqlite(self) -> bool:
+        """Check if using SQLite database."""
+        if self.DATABASE_URL:
+            return str(self.DATABASE_URL).startswith("sqlite")
+        return True
+
+    @property
+    def is_postgresql(self) -> bool:
+        """Check if using PostgreSQL database."""
+        if self.DATABASE_URL:
+            return str(self.DATABASE_URL).startswith("postgresql")
+        return False
 
     # Redis
     REDIS_URL: str = Field(

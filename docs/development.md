@@ -4,34 +4,199 @@
 
 ### Prerequisites
 - Python 3.11+
-- PostgreSQL 13+
-- Redis 6+
+- Package Manager: **uv** (recommended) or pip + venv
+- SQLite (included with Python) OR PostgreSQL 13+
+- Redis 6+ (optional, for caching)
 - Git
+
+### Package Manager Options
+
+**uv (Recommended - 10-100x faster than pip)**
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
+pip install uv
+
+# Key benefits:
+# • Extremely fast dependency resolution and installation
+# • Better conflict resolution
+# • Automatic Python version management
+# • Drop-in replacement for pip
+# • Built in Rust for speed
+```
+
+**Traditional pip + venv**
+Standard Python tooling included with Python installations.
 
 ### Development Setup
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd iac-api
-   ```
+**Option 1: Quick setup with uv (recommended)**
+```bash
+git clone <repository-url>
+cd iac-api
+./scripts/setup-dev-uv.sh
+```
 
-2. **Run the setup script:**
-   ```bash
-   ./scripts/setup-dev.sh
-   ```
+**Option 2: Traditional setup**
+```bash
+git clone <repository-url>
+cd iac-api
+./scripts/setup-dev.sh
+```
 
-3. **Activate virtual environment:**
-   ```bash
-   source venv/bin/activate
-   ```
+**Option 3: Manual setup with uv**
+```bash
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+uv pip install -e ".[dev]"
 
-4. **Start development server:**
-   ```bash
-   ./scripts/run-dev.sh
-   ```
+# Setup environment
+cp .env.example .env
+./scripts/setup-db.sh sqlite
+```
+
+**Option 4: Manual setup with pip**
+```bash
+# Create virtual environment and install dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -e ".[dev]"
+
+# Setup environment
+cp .env.example .env
+./scripts/setup-db.sh sqlite
+```
+
+### Environment Management
+
+#### Using uv (Recommended)
+
+```bash
+# Create virtual environment
+uv venv                              # Creates .venv/
+
+# Activate environment
+source .venv/bin/activate            # Linux/macOS
+.venv\Scripts\activate               # Windows
+
+# Install dependencies
+uv pip install -r requirements.txt  # Install from requirements.txt
+uv pip install package-name         # Install single package
+uv pip install -e ".[dev]"          # Install project in editable mode
+
+# Run commands in environment
+uv run python script.py             # Run without activating
+uv run pytest                       # Run tests
+uv run uvicorn main:app --reload    # Start server
+
+# List installed packages
+uv pip list
+
+# Generate requirements
+uv pip freeze > requirements.txt
+```
+
+#### Using Traditional Tools
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate environment
+source venv/bin/activate             # Linux/macOS
+venv\Scripts\activate                # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+pip install package-name
+pip install -e ".[dev]"
+
+# List installed packages
+pip list
+
+# Generate requirements
+pip freeze > requirements.txt
+```
+
+#### Virtual Environment Locations
+
+- **uv**: Creates `.venv/` directory (modern convention)
+- **venv**: Creates `venv/` directory (traditional)
+- Both are supported by the project scripts
 
 ## Development Workflow
+
+### Daily Development Commands
+
+#### With uv (Fast & Modern)
+
+```bash
+# Start development server
+./scripts/run-dev.sh                # Uses uv if available
+# or directly:
+uv run uvicorn main:app --reload
+
+# Run tests
+./scripts/run-tests.sh              # Uses uv if available
+# or directly:
+uv run pytest
+
+# Format and lint code
+./scripts/lint.sh                   # Uses uv if available
+# or directly:
+uv run black .
+uv run isort .
+uv run flake8 .
+uv run mypy app/
+
+# Install new dependencies
+uv pip install new-package
+uv pip install new-package==1.0.0   # Specific version
+
+# Update dependencies
+uv pip install --upgrade package-name
+uv pip install --upgrade-all        # Update all packages
+```
+
+#### With Traditional Tools
+
+```bash
+# Activate environment first
+source venv/bin/activate             # or .venv/bin/activate
+
+# Then run commands
+uvicorn main:app --reload
+pytest
+black .
+pip install new-package
+```
+
+### Package Management Best Practices
+
+#### uv Advantages
+
+- **Speed**: 10-100x faster than pip
+- **Reliability**: Better dependency resolution
+- **Convenience**: Can run commands without activation
+- **Modern**: Active development, modern Python tooling
+
+#### When to Use Each
+
+**Use uv when:**
+- Starting new projects
+- Working in teams (faster CI/CD)
+- You want the latest Python tooling
+- Speed matters for your workflow
+
+**Use pip when:**
+- Working with legacy projects
+- Corporate environments with restrictions
+- You prefer established, stable tooling
+- Team members are unfamiliar with uv
 
 ### Code Style
 
@@ -100,7 +265,77 @@ Common fixtures in `tests/conftest.py`:
 
 ### Database Development
 
-#### Creating Models
+#### Database Configuration
+
+The project supports both SQLite (for development) and PostgreSQL (for production):
+
+```bash
+# Use SQLite (default, no setup required)
+./scripts/setup-db.sh sqlite
+
+# Use PostgreSQL (requires PostgreSQL installation)
+./scripts/setup-db.sh postgresql
+```
+
+#### Database Features by Type
+
+**SQLite (Development)**
+- ✅ No installation required
+- ✅ Fast local development
+- ✅ Easy testing and experimentation
+- ❌ No concurrent writes
+- ❌ Limited for production use
+
+**PostgreSQL (Production)**
+- ✅ Full ACID compliance
+- ✅ Concurrent access
+- ✅ Advanced features (JSON, arrays, etc.)
+- ✅ Production ready
+- ❌ Requires installation and setup
+
+#### Database Best Practices
+
+**Development Workflow**
+1. Start with SQLite for quick prototyping
+2. Test with PostgreSQL before production deployment
+3. Use migrations for all schema changes
+4. Keep test database separate (automatically handled)
+
+**Model Development**
+```python
+# app/models/example.py
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from app.models.base import Base
+
+class Example(Base):
+    __tablename__ = "examples"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, index=True)  # Add indexes for queries
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Add constraints and indexes as needed
+    __table_args__ = (
+        Index('ix_example_name_active', 'name', 'is_active'),
+    )
+```
+
+**Migration Best Practices**
+```bash
+# Always review generated migrations before applying
+alembic revision --autogenerate -m "Add example table"
+
+# Edit the generated migration file to add:
+# - Proper indexes
+# - Data migrations if needed
+# - Rollback logic
+
+# Test the migration
+alembic upgrade head
+alembic downgrade -1  # Test rollback
+alembic upgrade head  # Apply again
+```
 
 ```python
 # app/models/example.py

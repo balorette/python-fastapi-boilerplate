@@ -4,10 +4,40 @@ A modern, production-ready FastAPI REST API for Infrastructure as Code operation
 
 ## 🚀 Features
 
-- **FastAPI Framework**: High-performance, modern Python web framework
-- **Async Support**: Full asynchronous support with SQLAlchemy and PostgreSQL
+- **FastAPI Framework**: High-performance, modern Python ### 🗄️ Additional Database Management
+
+```bash
+# Switch between databases
+./scripts/setup-db.sh sqlite      # Switch to SQLite
+./scripts/setup-db.sh postgresql  # Switch to PostgreSQL
+
+# View current database configuration
+grep "DATABASE_URL" .env
+```
+
+### ⚡ uv Quick Reference
+
+```bash
+# Fast setup (recommended)
+./scripts/setup-dev-uv.sh
+
+# Daily commands
+uv run uvicorn main:app --reload    # Start server
+uv run pytest                      # Run tests
+uv pip install package-name        # Install packages
+
+# Why uv?
+# • 10-100x faster than pip
+# • Better dependency resolution
+# • Modern Python tooling
+# Learn more: https://docs.astral.sh/uv/
+```
+
+## 🔧 Developmentork
+- **Async Support**: Full asynchronous support with SQLAlchemy and PostgreSQL/SQLite
+- **Flexible Database**: SQLite for development (default), PostgreSQL for production
 - **Authentication**: JWT-based authentication with OAuth2
-- **Database**: PostgreSQL with SQLAlchemy ORM and Alembic migrations
+- **Database**: SQLite (dev) or PostgreSQL (prod) with SQLAlchemy ORM and Alembic migrations
 - **Caching**: Redis for session management and caching
 - **Testing**: Comprehensive test suite with pytest
 - **Code Quality**: Pre-commit hooks, Black, isort, flake8, and mypy
@@ -19,67 +49,102 @@ A modern, production-ready FastAPI REST API for Infrastructure as Code operation
 ## 📋 Requirements
 
 - Python 3.11+
-- PostgreSQL 13+
-- Redis 6+
+- Package Manager: **uv** (recommended) or pip + venv
+- SQLite (included with Python) OR PostgreSQL 13+
+- Redis 6+ (optional, for caching)
 - Docker & Docker Compose (optional)
+
+### 📦 Package Manager Options
+
+**Option 1: uv (Recommended - Fast & Modern)**
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
+pip install uv
+```
+
+**Option 2: Traditional pip + venv**
+Standard Python tooling (already installed with Python)
 
 ## 🛠️ Quick Start
 
 ### Option 1: Using Scripts (Recommended)
 
-1. **Clone and setup the project:**
-   ```bash
-   git clone <repository-url>
-   cd iac-api
-   ./scripts/setup-dev.sh
-   ```
+**With uv (fastest):**
+```bash
+git clone <repository-url>
+cd iac-api
+./scripts/setup-dev-uv.sh    # New uv-based setup script
+```
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+**With traditional tools:**
+```bash
+git clone <repository-url>
+cd iac-api
+./scripts/setup-dev.sh       # Traditional pip + venv setup
+```
 
-3. **Start the development server:**
-   ```bash
-   ./scripts/run-dev.sh
-   ```
+**Continue with either method:**
+```bash
+# Configure environment (if needed)
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start the development server
+./scripts/run-dev.sh
+```
 
 ### Option 2: Using Docker Compose
 
-1. **Start all services:**
-   ```bash
-   docker-compose up -d
-   ```
+**SQLite version (simpler, faster start):**
+```bash
+docker-compose -f docker-compose.sqlite.yml up -d
+```
 
-2. **View logs:**
-   ```bash
-   docker-compose logs -f api
-   ```
+**PostgreSQL version (full features):**
+```bash
+docker-compose up -d
+```
+
+**View logs:**
+```bash
+docker-compose logs -f api
+```
 
 ### Option 3: Manual Setup
 
-1. **Create virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+**With uv (recommended):**
+```bash
+# Create project and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Setup environment and database
+cp .env.example .env
+./scripts/setup-db.sh sqlite
 
-3. **Setup environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+# Start the server
+uv run uvicorn main:app --reload
+```
 
-4. **Start the server:**
-   ```bash
-   uvicorn main:app --reload
-   ```
+**With traditional tools:**
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup environment and database
+cp .env.example .env
+./scripts/setup-db.sh sqlite
+
+# Start the server
+uvicorn main:app --reload
+```
 
 ## 📚 API Documentation
 
@@ -91,7 +156,23 @@ Once the server is running, access the interactive API documentation:
 
 ## 🗄️ Database Setup
 
-### Using PostgreSQL (Recommended)
+### Quick Start with SQLite (Recommended for Development)
+
+The project uses **SQLite by default** for development - no additional setup required!
+
+1. **Automatic setup** (SQLite is configured by default):
+   ```bash
+   ./scripts/setup-dev.sh  # SQLite is set up automatically
+   ```
+
+2. **Start developing immediately:**
+   ```bash
+   ./scripts/run-dev.sh
+   ```
+
+### Using PostgreSQL (Production or Advanced Development)
+
+If you need PostgreSQL features or want to match your production environment:
 
 1. **Install PostgreSQL** and create a database:
    ```sql
@@ -100,16 +181,37 @@ Once the server is running, access the interactive API documentation:
    GRANT ALL PRIVILEGES ON DATABASE iac_api_db TO api_user;
    ```
 
-2. **Update .env file:**
+2. **Configure PostgreSQL:**
+   ```bash
+   ./scripts/setup-db.sh postgresql
+   ```
+
+3. **Or manually update .env file:**
    ```env
+   # Comment out SQLite settings
+   #DATABASE_URL=sqlite:///./app.db
+   #DATABASE_URL_ASYNC=sqlite+aiosqlite:///./app.db
+   
+   # Uncomment and configure PostgreSQL
    DATABASE_URL=postgresql://api_user:your_password@localhost:5432/iac_api_db
    DATABASE_URL_ASYNC=postgresql+asyncpg://api_user:your_password@localhost:5432/iac_api_db
    ```
 
-3. **Run migrations:**
-   ```bash
-   alembic upgrade head
-   ```
+### Database Migrations
+
+```bash
+# Initialize migrations (run once)
+alembic init alembic  # Already done in this project
+
+# Create a new migration
+alembic revision --autogenerate -m "Description of changes"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback migrations
+alembic downgrade -1
+```
 
 ## 🧪 Testing
 
@@ -128,7 +230,16 @@ pytest tests/test_users.py -v
 pytest --cov=app --cov-report=html
 ```
 
-## 🔧 Development
+### �️ Additional Database Management
+
+```bash
+# Switch between databases
+./scripts/setup-db.sh sqlite      # Switch to SQLite
+./scripts/setup-db.sh postgresql  # Switch to PostgreSQL
+
+# View current database configuration
+grep "DATABASE_URL" .env
+```
 
 ### Code Formatting and Linting
 

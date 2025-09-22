@@ -29,7 +29,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Application
+  # FastAPI Application with PostgreSQL
   api:
     build:
       context: .

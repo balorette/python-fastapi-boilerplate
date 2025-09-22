@@ -35,17 +35,19 @@ pip install -e ".[dev]"
 echo "🔗 Setting up pre-commit hooks..."
 pre-commit install
 
-# Copy environment file
+# Copy environment file and setup database
 if [ ! -f .env ]; then
     echo "📄 Creating .env file..."
     cp .env.example .env
-    echo "⚠️ Please update .env file with your configuration"
+    echo "✅ Using SQLite for development (default)"
+    echo "⚠️ Please review .env file and update if needed"
+else
+    echo "📄 .env file already exists"
 fi
 
-# Create database (if using SQLite for development)
+# Setup database (defaults to SQLite)
 echo "🗄️ Setting up database..."
-# Uncomment the following lines if you want to run migrations
-# alembic upgrade head
+./scripts/setup-db.sh sqlite
 
 echo "✅ Development environment setup complete!"
 echo ""

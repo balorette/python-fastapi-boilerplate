@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # FastAPI Application (SQLite mode - no external dependencies)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite:///./app.db
+      - DATABASE_URL_ASYNC=sqlite+aiosqlite:///./app.db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+      - sqlite_data:/app/data  # Persist SQLite database
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sqlite_data:
