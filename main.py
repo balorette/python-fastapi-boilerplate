@@ -17,6 +17,15 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
     # Startup
     setup_logging()
+    
+    # Security warning for default secret key
+    if settings.SECRET_KEY == "your-secret-key-change-this-in-production":
+        print(
+            "⚠️  WARNING: Using default SECRET_KEY! "
+            "This is INSECURE for production use. "
+            "Please set a secure SECRET_KEY environment variable."
+        )
+    
     yield
     # Shutdown
     pass

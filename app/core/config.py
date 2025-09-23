@@ -1,6 +1,6 @@
 """Application configuration settings."""
 
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import AnyHttpUrl, Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = Field(
         default="your-secret-key-change-this-in-production",
-        description="Secret key for JWT",
+        description="Secret key for JWT - MUST be changed in production!",
     )
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
@@ -55,9 +55,7 @@ class Settings(BaseSettings):
         return False
 
     # Redis
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0", description="Redis URL"
-    )
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis URL")
 
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = Field(
@@ -83,12 +81,8 @@ class Settings(BaseSettings):
     WORKERS: int = Field(default=1, description="Number of workers")
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = Field(
-        default=True, description="Enable rate limiting"
-    )
-    RATE_LIMIT_REQUESTS: int = Field(
-        default=100, description="Requests per minute"
-    )
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
+    RATE_LIMIT_REQUESTS: int = Field(default=100, description="Requests per minute")
 
 
 # Create settings instance
