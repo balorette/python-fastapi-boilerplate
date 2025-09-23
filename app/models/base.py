@@ -3,23 +3,27 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, Integer
-from sqlalchemy.ext.declarative import as_declarative, declared_attr
+from sqlalchemy import DateTime, func, MetaData
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# Enhanced metadata with naming convention for better constraint naming
+metadata = MetaData(
+    naming_convention={
+        "ix": "ix_%(column_0_label)s",
+        "uq": "uq_%(table_name)s_%(column_0_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s"
+    }
+)
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
     """Base model class with common fields."""
     
-    id: Any
-    __name__: str
-
-    # Generate __tablename__ automatically
-    @declared_attr
-    def __tablename__(cls) -> str:
-        return cls.__name__.lower()
-
+    metadata = metadata
+    
     # Common fields
-    id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())

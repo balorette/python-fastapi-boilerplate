@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.error_handlers import register_error_handlers
 
 
 @asynccontextmanager
@@ -16,6 +17,15 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
     # Startup
     setup_logging()
+    
+    # Security warning for default secret key
+    if settings.SECRET_KEY == "your-secret-key-change-this-in-production":
+        print(
+            "⚠️  WARNING: Using default SECRET_KEY! "
+            "This is INSECURE for production use. "
+            "Please set a secure SECRET_KEY environment variable."
+        )
+    
     yield
     # Shutdown
     pass
@@ -49,6 +59,9 @@ def create_application() -> FastAPI:
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
+    
+    # Register error handlers
+    register_error_handlers(app)
 
     return app
 

@@ -1,6 +1,6 @@
 """Example User model."""
 
-from sqlalchemy import Boolean, Column, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
@@ -10,8 +10,8 @@ class User(Base):
     
     __tablename__ = "users"
     
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    username = Column(String(100), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    username: Mapped[str] = mapped_column(unique=True, index=True)
+    hashed_password: Mapped[str]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_superuser: Mapped[bool] = mapped_column(default=False)
