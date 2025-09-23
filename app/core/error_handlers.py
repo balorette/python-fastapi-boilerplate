@@ -1,7 +1,6 @@
 """Global error handlers for the application."""
 
 import logging
-from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse

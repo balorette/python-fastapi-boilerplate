@@ -1,7 +1,7 @@
 """Security utilities for authentication and authorization."""
 
-from datetime import datetime, timedelta
-from typing import Any, Union
+from datetime import datetime, timedelta, timezone
+from typing import Union
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -18,19 +18,23 @@ def create_access_token(
     """Create JWT access token."""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
     return encoded_jwt
 
 
 def verify_token(token: str) -> Union[str, None]:
     """Verify JWT token and return username."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         username: str = payload.get("sub")
         if username is None:
             return None
