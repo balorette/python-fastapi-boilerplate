@@ -46,6 +46,10 @@ class MockAsyncSession:
     async def refresh(self, instance):
         return self._session.refresh(instance)
     
+    async def delete(self, instance):
+        """Add missing delete method."""
+        return self._session.delete(instance)
+    
     def scalar_one_or_none(self):
         """Mock method for scalar results."""
         return None

@@ -1,125 +1,290 @@
-"""User service for business logic operations."""
+"""Enhanced user service with comprehensive business logic."""
 
-from typing import List, Optional
-from passlib.context import CryptContext
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from passlib.context import CryptContext
 
-from ..repositories.user import UserRepository
-from ..models.user import User
-from ..schemas.user import UserCreate, UserUpdate
-from ..core.exceptions import ValidationError
+from app.models.user import User
+from app.repositories.user import UserRepository
+from app.schemas.user import UserCreate, UserUpdate, UserPasswordUpdate, UserResponse
+from app.schemas.pagination import PaginatedResponse, PaginationParams, SearchParams, DateRangeParams
+from app.core.exceptions import (
+    ValidationError, 
+    NotFoundError, 
+    ConflictError, 
+    AuthenticationError
+)
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserService:
-    """Service layer for user business logic."""
-
+    """Enhanced user service with comprehensive business logic."""
+    
     def __init__(self, session: AsyncSession):
+        self.session = session
         self.repository = UserRepository(session)
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+    
+    def _hash_password(self, password: str) -> str:
+        """Hash a password using bcrypt."""
+        return pwd_context.hash(password)
+    
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
-        return self.pwd_context.verify(plain_password, hashed_password)
-
-    def _get_password_hash(self, password: str) -> str:
-        """Generate password hash."""
-        return self.pwd_context.hash(password)
-
+        return pwd_context.verify(plain_password, hashed_password)
+    
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with validation."""
-        # Validate email uniqueness
+        # Check if email already exists
         if await self.repository.email_exists(user_data.email):
-            raise ValidationError("Email already registered")
-
-        # Validate username uniqueness
+            raise ConflictError(f"Email {user_data.email} is already registered")
+        
+        # Check if username already exists
         if await self.repository.username_exists(user_data.username):
-            raise ValidationError("Username already taken")
-
-        # Create user with hashed password
-        user_dict = user_data.model_dump()
-        user_dict["hashed_password"] = self._get_password_hash(user_data.password)
-        del user_dict["password"]  # Remove plain password
-
-        return await self.repository.create(user_dict)
-
-    async def get_user(self, user_id: int) -> Optional[User]:
-        """Get user by ID."""
-        return await self.repository.get(user_id)
-
-    async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get user by email."""
-        return await self.repository.get_by_email(email)
-
-    async def get_user_by_username(self, username: str) -> Optional[User]:
-        """Get user by username."""
-        return await self.repository.get_by_username(username)
-
-    async def get_users(
-        self, skip: int = 0, limit: int = 100, active_only: bool = False
-    ) -> List[User]:
-        """Get users with optional filtering."""
-        if active_only:
-            return await self.repository.get_active_users(skip=skip, limit=limit)
-        return await self.repository.get_multi(skip=skip, limit=limit)
-
-    async def update_user(
-        self, user_id: int, user_update: UserUpdate
-    ) -> Optional[User]:
-        """Update user information."""
-        # Check if user exists
-        existing_user = await self.repository.get(user_id)
-        if not existing_user:
-            return None
-
-        update_dict = user_update.model_dump(exclude_unset=True)
-
-        # Handle password update
-        if "password" in update_dict:
-            update_dict["hashed_password"] = self._get_password_hash(
-                update_dict["password"]
-            )
-            del update_dict["password"]
-
-        # Validate email uniqueness if changing email
-        if "email" in update_dict and update_dict["email"] != existing_user.email:
-            if await self.repository.email_exists(update_dict["email"]):
-                raise ValidationError("Email already registered")
-
-        # Validate username uniqueness if changing username
-        if (
-            "username" in update_dict
-            and update_dict["username"] != existing_user.username
-        ):
-            if await self.repository.username_exists(update_dict["username"]):
-                raise ValidationError("Username already taken")
-
-        return await self.repository.update(user_id, update_dict)
-
-    async def delete_user(self, user_id: int) -> bool:
-        """Delete a user."""
-        return await self.repository.delete(user_id)
-
-    async def authenticate_user(self, email: str, password: str) -> Optional[User]:
-        """Authenticate user by email and password."""
+            raise ConflictError(f"Username {user_data.username} is already taken")
+        
+        # Create user data
+        user_dict = user_data.model_dump(exclude={'password', 'confirm_password'})
+        user_dict['hashed_password'] = self._hash_password(user_data.password)
+        
+        try:
+            return await self.repository.create(user_dict)
+        except Exception as e:
+            raise ValidationError(f"Failed to create user: {str(e)}")
+    
+    async def get_user(self, user_id: int, load_relationships: bool = False) -> User:
+        """Get a user by ID."""
+        user = await self.repository.get(user_id, load_relationships=load_relationships)
+        if not user:
+            raise NotFoundError(f"User with ID {user_id} not found")
+        return user
+    
+    async def get_user_by_email(self, email: str) -> User:
+        """Get a user by email."""
         user = await self.repository.get_by_email(email)
         if not user:
-            return None
-        if not self._verify_password(password, str(user.hashed_password)):
-            return None
+            raise NotFoundError(f"User with email {email} not found")
         return user
-
-    async def activate_user(self, user_id: int) -> Optional[User]:
+    
+    async def get_user_by_username(self, username: str) -> User:
+        """Get a user by username."""
+        user = await self.repository.get_by_username(username)
+        if not user:
+            raise NotFoundError(f"User with username {username} not found")
+        return user
+    
+    async def get_users_paginated(
+        self, 
+        params: PaginationParams,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> PaginatedResponse[UserResponse]:
+        """Get paginated list of users."""
+        # Get total count
+        total = await self.repository.count_records(filters)
+        
+        # Get users
+        users = await self.repository.get_multi(
+            skip=params.skip,
+            limit=params.limit,
+            filters=filters,
+            order_by=params.order_by
+        )
+        
+        # Convert to response schema
+        user_responses = [UserResponse.model_validate(user) for user in users]
+        
+        return PaginatedResponse.create(
+            items=user_responses,
+            total=total,
+            skip=params.skip,
+            limit=params.limit
+        )
+    
+    async def search_users(self, params: SearchParams) -> PaginatedResponse[UserResponse]:
+        """Search users with pagination."""
+        # Count search results
+        search_users = await self.repository.search_users(
+            query=params.query, 
+            skip=0, 
+            limit=10000  # Get all for counting
+        )
+        total = len(search_users)
+        
+        # Get paginated results
+        users = await self.repository.search_users(
+            query=params.query,
+            skip=params.skip,
+            limit=params.limit
+        )
+        
+        # Convert to response schema
+        user_responses = [UserResponse.model_validate(user) for user in users]
+        
+        return PaginatedResponse.create(
+            items=user_responses,
+            total=total,
+            skip=params.skip,
+            limit=params.limit
+        )
+    
+    async def get_active_users_paginated(
+        self, 
+        params: PaginationParams
+    ) -> PaginatedResponse[UserResponse]:
+        """Get paginated list of active users."""
+        # Count active users
+        total = await self.repository.count_active_users()
+        
+        # Get active users
+        users = await self.repository.get_active_users(
+            skip=params.skip,
+            limit=params.limit,
+            order_by=params.order_by
+        )
+        
+        # Convert to response schema
+        user_responses = [UserResponse.model_validate(user) for user in users]
+        
+        return PaginatedResponse.create(
+            items=user_responses,
+            total=total,
+            skip=params.skip,
+            limit=params.limit
+        )
+    
+    async def get_users_by_date_range(
+        self, 
+        date_params: DateRangeParams,
+        pagination_params: PaginationParams
+    ) -> PaginatedResponse[UserResponse]:
+        """Get users created within a date range."""
+        # Count users in date range
+        filters = {}
+        if date_params.start_date:
+            filters['created_at'] = {'gte': date_params.start_date}
+        if date_params.end_date:
+            if 'created_at' in filters:
+                filters['created_at']['lte'] = date_params.end_date
+            else:
+                filters['created_at'] = {'lte': date_params.end_date}
+        
+        total = await self.repository.count_records(filters)
+        
+        # Get users
+        users = await self.repository.get_users_by_creation_date(
+            start_date=date_params.start_date,
+            end_date=date_params.end_date,
+            skip=pagination_params.skip,
+            limit=pagination_params.limit
+        )
+        
+        # Convert to response schema
+        user_responses = [UserResponse.model_validate(user) for user in users]
+        
+        return PaginatedResponse.create(
+            items=user_responses,
+            total=total,
+            skip=pagination_params.skip,
+            limit=pagination_params.limit
+        )
+    
+    async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
+        """Update a user with validation."""
+        user = await self.get_user(user_id)
+        
+        update_dict = user_data.model_dump(exclude_unset=True)
+        
+        # Validate email uniqueness if being updated
+        if 'email' in update_dict:
+            if await self.repository.email_exists(update_dict['email'], exclude_id=user_id):
+                raise ConflictError(f"Email {update_dict['email']} is already in use")
+        
+        # Validate username uniqueness if being updated
+        if 'username' in update_dict:
+            if await self.repository.username_exists(update_dict['username'], exclude_id=user_id):
+                raise ConflictError(f"Username {update_dict['username']} is already taken")
+        
+        try:
+            return await self.repository.update(user, update_dict)
+        except Exception as e:
+            raise ValidationError(f"Failed to update user: {str(e)}")
+    
+    async def update_password(self, user_id: int, password_data: UserPasswordUpdate) -> User:
+        """Update user password with current password verification."""
+        user = await self.get_user(user_id)
+        
+        # Verify current password
+        if not self._verify_password(password_data.current_password, user.hashed_password):
+            raise AuthenticationError("Current password is incorrect")
+        
+        # Update password
+        update_dict = {'hashed_password': self._hash_password(password_data.new_password)}
+        
+        try:
+            return await self.repository.update(user, update_dict)
+        except Exception as e:
+            raise ValidationError(f"Failed to update password: {str(e)}")
+    
+    async def delete_user(self, user_id: int) -> bool:
+        """Delete a user."""
+        if not await self.repository.record_exists(user_id):
+            raise NotFoundError(f"User with ID {user_id} not found")
+        
+        try:
+            return await self.repository.delete(user_id)
+        except Exception as e:
+            raise ValidationError(f"Failed to delete user: {str(e)}")
+    
+    async def activate_user(self, user_id: int) -> User:
         """Activate a user account."""
-        return await self.repository.update(user_id, {"is_active": True})
-
-    async def deactivate_user(self, user_id: int) -> Optional[User]:
+        user = await self.get_user(user_id)
+        if user.is_active:
+            return user  # Already active
+        
+        return await self.repository.update(user, {'is_active': True})
+    
+    async def deactivate_user(self, user_id: int) -> User:
         """Deactivate a user account."""
-        return await self.repository.update(user_id, {"is_active": False})
-
-    async def make_superuser(self, user_id: int) -> Optional[User]:
-        """Grant superuser privileges."""
-        return await self.repository.update(user_id, {"is_superuser": True})
-
-    async def remove_superuser(self, user_id: int) -> Optional[User]:
-        """Remove superuser privileges."""
-        return await self.repository.update(user_id, {"is_superuser": False})
+        user = await self.get_user(user_id)
+        if not user.is_active:
+            return user  # Already inactive
+        
+        return await self.repository.update(user, {'is_active': False})
+    
+    async def authenticate_user(self, username: str, password: str) -> User:
+        """Authenticate a user by username/email and password."""
+        # Try to get user by username first, then by email
+        user = await self.repository.get_by_username(username)
+        if not user:
+            user = await self.repository.get_by_email(username)
+        
+        if not user or not self._verify_password(password, user.hashed_password):
+            raise AuthenticationError("Invalid username/email or password")
+        
+        if not user.is_active:
+            raise AuthenticationError("User account is deactivated")
+        
+        return user
+    
+    async def get_user_stats(self) -> Dict[str, int]:
+        """Get user statistics."""
+        total_users = await self.repository.count_records()
+        active_users = await self.repository.count_active_users()
+        inactive_users = total_users - active_users
+        superusers = await self.repository.count_records({'is_superuser': True})
+        
+        # Recent registrations (last 30 days)
+        from datetime import datetime, timedelta
+        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        recent_registrations = await self.repository.count_records({
+            'created_at': {'gte': thirty_days_ago}
+        })
+        
+        return {
+            'total_users': total_users,
+            'active_users': active_users,
+            'inactive_users': inactive_users,
+            'superusers': superusers,
+            'recent_registrations': recent_registrations
+        }

@@ -28,33 +28,33 @@ class ValidationError(APIException):
 class NotFoundError(APIException):
     """Exception raised when a resource is not found."""
     
-    def __init__(self, message: str = "Resource not found"):
-        super().__init__(message, status_code=404)
+    def __init__(self, message: str = "Resource not found", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, status_code=404, details=details)
 
 
 class AuthenticationError(APIException):
     """Exception raised for authentication errors."""
     
-    def __init__(self, message: str = "Authentication failed"):
-        super().__init__(message, status_code=401)
+    def __init__(self, message: str = "Authentication failed", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, status_code=401, details=details)
 
 
 class AuthorizationError(APIException):
     """Exception raised for authorization errors."""
     
-    def __init__(self, message: str = "Access denied"):
-        super().__init__(message, status_code=403)
+    def __init__(self, message: str = "Access denied", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, status_code=403, details=details)
 
 
 class ConflictError(APIException):
     """Exception raised for resource conflicts."""
     
-    def __init__(self, message: str = "Resource conflict"):
-        super().__init__(message, status_code=409)
+    def __init__(self, message: str = "Resource conflict", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, status_code=409, details=details)
 
 
 class DatabaseError(APIException):
     """Exception raised for database-related errors."""
     
-    def __init__(self, message: str = "Database operation failed"):
-        super().__init__(message, status_code=500)
+    def __init__(self, message: str = "Database operation failed", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, status_code=500, details=details)
