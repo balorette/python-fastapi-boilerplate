@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.error_handlers import register_error_handlers
 
 
 @asynccontextmanager
@@ -49,6 +50,9 @@ def create_application() -> FastAPI:
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
+    
+    # Register error handlers
+    register_error_handlers(app)
 
     return app
 
