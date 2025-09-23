@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.database import init_database
 from app.core.error_handlers import register_error_handlers
 
 
@@ -25,6 +26,9 @@ async def lifespan(app: FastAPI):
             "This is INSECURE for production use. "
             "Please set a secure SECRET_KEY environment variable."
         )
+
+    if settings.INIT_DB:
+        await init_database()
     
     yield
     # Shutdown

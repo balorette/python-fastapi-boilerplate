@@ -2,6 +2,7 @@
 
 from typing import Any, AsyncGenerator, Dict
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -10,6 +11,12 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.models.base import Base
+
+# Ensure SQLite directory exists
+if settings.is_sqlite:
+    db_path = str(settings.DATABASE_URL).replace("sqlite:///", "")
+    db_dir = Path(db_path).parent
+    db_dir.mkdir(parents=True, exist_ok=True)
 
 # Configure engine settings based on database type
 engine_kwargs: Dict[str, Any] = {"echo": settings.DEBUG}
@@ -92,6 +99,28 @@ async def get_async_db_context():
             await session.rollback()
             raise e
 
+async def create_tables():
+    """Create all database tables."""
+    if settings.is_sqlite:
+        # For SQLite, create tables synchronously first
+        Base.metadata.create_all(bind=engine)
+    else:
+        # For PostgreSQL, create tables asynchronously
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+
+async def init_database():
+    """Initialize database with tables and any required data."""
+    try:
+        await create_tables()
+        print(f"✅ Database initialized successfully using {settings.DATABASE_TYPE}")
+        if settings.is_sqlite:
+            db_path = str(settings.DATABASE_URL).replace("sqlite:///", "")
+            print(f"📁 SQLite database created at: {db_path}")
+    except Exception as e:
+        print(f"❌ Failed to initialize database: {e}")
+        raise
 
 # Database health check
 async def check_database_health() -> bool:

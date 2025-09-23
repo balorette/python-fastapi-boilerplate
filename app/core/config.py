@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = Field(default="/api/v1", description="API v1 prefix")
     PROJECT_NAME: str = Field(default="API", description="Project name")
     PROJECT_VERSION: str = Field(default="0.1.0", description="Project version")
+    INIT_DB: bool = Field(default=False, description="Initialize database on startup")
 
     # Security
     SECRET_KEY: str = Field(
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
     DATABASE_URL_ASYNC: Optional[Union[PostgresDsn, str]] = Field(
         default="sqlite+aiosqlite:///./app.db", description="Async database URL"
     )
+    DATABASE_TYPE: str = Field(default="sqlite", description="Database type")
 
     @property
     def is_sqlite(self) -> bool:
