@@ -4,13 +4,22 @@ from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_user_service
+from app.api.dependencies import get_user_service, get_current_user, get_current_active_user
 from app.services.user import UserService
+from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.schemas.pagination import PaginationParams, PaginatedResponse
 from app.core.exceptions import ValidationError, NotFoundError, ConflictError
 
 router = APIRouter()
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """Get current user information."""
+    return current_user
 
 
 @router.get("/", response_model=PaginatedResponse[UserResponse])

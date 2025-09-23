@@ -32,6 +32,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30, description="Access token expiration time"
     )
+    EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = Field(
+        default=24, description="Password reset token expiration time in hours"
+    )
+    #OAtuhProviders
+
+    #Google
+    GOOGLE_OAUTH_ENABLED: bool = Field(default=False, description="Use Google OAuth")
+    GOOGLE_CLIENT_ID: str = Field(description="Google Client ID", default="your-google-client-id")
+    GOOGLE_CLIENT_SECRET: str = Field(description="Google Client Secret", default="your-google-client-secret")
+    GOOGLE_REDIRECT_URI: str = Field(description="Google Redirect URI", default="your-google-redirect-uri")
 
     # Database
     DATABASE_URL: Optional[Union[PostgresDsn, str]] = Field(
