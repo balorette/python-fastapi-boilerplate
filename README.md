@@ -145,6 +145,13 @@ The project uses **SQLite by default** for development - no additional setup req
 
 If you need PostgreSQL features or want to match your production environment:
 
+**Pre Work Run docker container**
+```bash
+docker pull postgres:15.14-alpine3.22
+export DB_PASSWORD="mydbpassword"
+docker run --name api_postgres -e POSTGRES_PASSWORD=$DB_PASSWORD -d -p 5432:5432 -v api-pgdata:/var/lib/postgresql/data postgres:15.14-alpine3.22
+```
+
 1. **Install PostgreSQL** and create a database:
    ```sql
    CREATE DATABASE iac_api_db;
