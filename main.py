@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1.api import api_router
 from app.core.config import settings
@@ -46,6 +47,9 @@ def create_application() -> FastAPI:
         redoc_url=f"{settings.API_V1_STR}/redoc",
         lifespan=lifespan,
     )
+
+    # Add session middleware for OAuth CSRF protection
+    app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
     # Set all CORS enabled origins
     if settings.BACKEND_CORS_ORIGINS:

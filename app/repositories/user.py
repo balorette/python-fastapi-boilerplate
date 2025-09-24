@@ -125,3 +125,29 @@ class UserRepository(BaseRepository[User]):
             limit=limit, 
             filters={"is_superuser": True}
         )
+    
+    # OAuth-specific methods
+    
+    async def get_by_oauth_id(self, oauth_provider: str, oauth_id: str) -> Optional[User]:
+        """Get user by OAuth provider and ID."""
+        stmt = select(User).where(
+            and_(
+                User.oauth_provider == oauth_provider,
+                User.oauth_id == oauth_id
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def get_oauth_users(self, oauth_provider: str, skip: int = 0, limit: int = 100) -> List[User]:
+        """Get users by OAuth provider."""
+        stmt = select(User).where(User.oauth_provider == oauth_provider)
+        stmt = stmt.order_by(User.created_at.desc()).offset(skip).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+    
+    async def count_oauth_users(self, oauth_provider: str) -> int:
+        """Count users by OAuth provider."""
+        stmt = select(func.count(User.id)).where(User.oauth_provider == oauth_provider)
+        result = await self.session.execute(stmt)
+        return result.scalar() or 0

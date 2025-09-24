@@ -8,6 +8,7 @@ from app.core.database import get_async_db
 from app.core.security import verify_token
 from app.core.exceptions import AuthenticationError
 from app.services.user import UserService
+from app.services.oauth import GoogleOAuthService
 from app.models.user import User
 
 # OAuth2 scheme
@@ -18,7 +19,7 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme), 
     db: AsyncSession = Depends(get_async_db)
 ) -> User:
-    """Get current authenticated user."""
+    """Get current authenticated user supporting both local JWT and Google ID tokens."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -26,27 +27,40 @@ async def get_current_user(
     )
 
     try:
-        # Verify token and get user ID
-        user_id_str = verify_token(token)
-        if user_id_str is None:
-            raise credentials_exception
-
-        # Convert user ID to integer
-        try:
-            user_id = int(user_id_str)
-        except ValueError:
-            raise credentials_exception
-
-        # Get user from database
         user_service = UserService(db)
-        user = await user_service.get_user(user_id)
         
-        if not user:
-            raise credentials_exception
+        # First try to verify as local JWT token
+        user_id_str = verify_token(token)
+        if user_id_str is not None:
+            # Local JWT token - get user by ID
+            try:
+                user_id = int(user_id_str)
+                user = await user_service.get_user(user_id)
+                if user and user.is_active:
+                    return user
+            except (ValueError, Exception):
+                pass  # Fall through to try Google token
+        
+        # Try to verify as Google ID token
+        try:
+            oauth_service = GoogleOAuthService()
+            id_info = oauth_service.verify_id_token(token)
             
-        return user
+            # Extract Google user ID
+            google_user_id = id_info.get("sub")
+            if google_user_id:
+                user = await user_service.authenticate_oauth_user("google", google_user_id)
+                if user and user.is_active:
+                    return user
+        except Exception:
+            pass  # Not a valid Google token
         
-    except (AuthenticationError, ValueError, Exception):
+        # If we get here, token validation failed
+        raise credentials_exception
+        
+    except AuthenticationError:
+        raise credentials_exception
+    except Exception:
         raise credentials_exception
 
 

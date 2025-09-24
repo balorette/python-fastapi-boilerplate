@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from app.models.user import User
 from app.repositories.user import UserRepository
 from app.schemas.user import UserCreate, UserUpdate, UserPasswordUpdate, UserResponse
+from app.schemas.oauth import OAuthUserCreate, GoogleUserInfo
 from app.schemas.pagination import PaginatedResponse, PaginationParams, SearchParams, DateRangeParams
 from app.core.exceptions import (
     ValidationError, 
@@ -214,6 +215,10 @@ class UserService:
         """Update user password with current password verification."""
         user = await self.get_user(user_id)
         
+        # Check if user has a local password (not OAuth-only)
+        if not user.hashed_password:
+            raise ValidationError("Cannot update password for OAuth-only users")
+        
         # Verify current password
         if not self._verify_password(password_data.current_password, user.hashed_password):
             raise AuthenticationError("Current password is incorrect")
@@ -259,8 +264,119 @@ class UserService:
         if not user:
             user = await self.repository.get_by_email(username)
         
-        if not user or not self._verify_password(password, user.hashed_password):
+        # Check if user exists and has a local password
+        if not user:
             raise AuthenticationError("Invalid username/email or password")
+        
+        if not user.hashed_password:
+            raise AuthenticationError("This account uses OAuth login. Please use Google Sign-In.")
+        
+        if not self._verify_password(password, user.hashed_password):
+            raise AuthenticationError("Invalid username/email or password")
+        
+        if not user.is_active:
+            raise AuthenticationError("User account is deactivated")
+        
+        return user
+    
+    # OAuth-specific methods
+    
+    async def create_oauth_user(self, oauth_data: OAuthUserCreate) -> User:
+        """Create a new user from OAuth provider data."""
+        # Check if user already exists by email (auto-link accounts)
+        existing_user = await self.repository.get_by_email(oauth_data.email)
+        
+        if existing_user:
+            # Link OAuth account to existing user
+            return await self.link_oauth_account(existing_user.id, oauth_data)
+        
+        # Create new OAuth user with email as username
+        user_dict = oauth_data.model_dump()
+        user_dict['username'] = oauth_data.email  # Use email as username for OAuth users
+        
+        try:
+            user = await self.repository.create(user_dict)
+            await self.session.commit()
+            return user
+        except Exception as e:
+            await self.session.rollback()
+            raise ConflictError(f"Failed to create OAuth user: {str(e)}")
+    
+    async def link_oauth_account(self, user_id: int, oauth_data: OAuthUserCreate) -> User:
+        """Link OAuth provider to existing user account."""
+        user = await self.get_user(user_id)
+        
+        # Update user with OAuth information
+        update_data = {
+            'oauth_provider': oauth_data.oauth_provider,
+            'oauth_id': oauth_data.oauth_id,
+            'oauth_email_verified': oauth_data.oauth_email_verified,
+            'oauth_refresh_token': oauth_data.oauth_refresh_token,
+            # Update name if not set or if OAuth provides more complete info
+            'full_name': oauth_data.full_name if not user.full_name else user.full_name
+        }
+        
+        try:
+            updated_user = await self.repository.update(user, update_data)
+            await self.session.commit()
+            return updated_user
+        except Exception as e:
+            await self.session.rollback()
+            raise ConflictError(f"Failed to link OAuth account: {str(e)}")
+    
+    async def get_by_oauth_id(self, oauth_provider: str, oauth_id: str) -> Optional[User]:
+        """Get user by OAuth provider and ID."""
+        return await self.repository.get_by_oauth_id(oauth_provider, oauth_id)
+    
+    async def create_or_update_oauth_user(self, google_user_info: GoogleUserInfo, refresh_token: Optional[str] = None) -> tuple[User, bool]:
+        """Create or update user from Google OAuth info.
+        
+        Returns:
+            tuple: (user, is_new_user)
+        """
+        # First try to find by OAuth ID
+        existing_user = await self.get_by_oauth_id("google", google_user_info.id)
+        
+        if existing_user:
+            # Update existing OAuth user
+            update_data = {
+                'full_name': google_user_info.name,
+                'oauth_email_verified': google_user_info.verified_email,
+                'oauth_refresh_token': refresh_token,
+                'is_active': True  # Reactivate if deactivated
+            }
+            
+            try:
+                updated_user = await self.repository.update(existing_user, update_data)
+                await self.session.commit()
+                return updated_user, False
+            except Exception as e:
+                await self.session.rollback()
+                raise ConflictError(f"Failed to update OAuth user: {str(e)}")
+        
+        # Create OAuth user data
+        oauth_user_data = OAuthUserCreate(
+            email=google_user_info.email,
+            username=google_user_info.email,  # Use email as username
+            full_name=google_user_info.name,
+            oauth_provider="google",
+            oauth_id=google_user_info.id,
+            oauth_email_verified=google_user_info.verified_email,
+            oauth_refresh_token=refresh_token,
+            is_active=True,
+            is_superuser=False
+        )
+        
+        # Create or link user
+        user = await self.create_oauth_user(oauth_user_data)
+        return user, True
+    
+    async def authenticate_oauth_user(self, oauth_provider: str, oauth_id: str) -> User:
+        """Authenticate a user via OAuth provider."""
+        user = await self.get_by_oauth_id(oauth_provider, oauth_id)
+        
+        if not user:
+            raise AuthenticationError(f"No user found for {oauth_provider} ID: {oauth_id}")
         
         if not user.is_active:
             raise AuthenticationError("User account is deactivated")
