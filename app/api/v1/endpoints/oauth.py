@@ -16,7 +16,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.database import get_db
+from app.core.database import get_async_db
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -43,7 +43,7 @@ settings = get_settings()
 @router.post("/authorize", response_model=AuthorizationResponse)
 async def authorize(
     request: AuthorizationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> AuthorizationResponse:
     """
     OAuth2 Authorization endpoint.
@@ -105,7 +105,7 @@ async def authorize(
 @router.post("/token", response_model=TokenResponse)
 async def token(
     request: TokenRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> TokenResponse:
     """
     OAuth2 Token endpoint.
@@ -195,7 +195,7 @@ async def token(
 @router.post("/login", response_model=TokenResponse)
 async def local_login(
     request: LocalLoginRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> TokenResponse:
     """
     Direct local account login (simplified flow for frontend).
@@ -253,7 +253,7 @@ async def local_login(
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token_endpoint(
     request: RefreshTokenRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> TokenResponse:
     """
     Refresh access token using refresh token.
@@ -346,7 +346,7 @@ async def oauth_callback(
     code: str,
     state: str | None = None,
     error: str | None = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     OAuth provider callback handler.
@@ -374,7 +374,7 @@ async def oauth_callback(
 @router.post("/revoke")
 async def revoke_token(
     token: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, str]:
     """
     Revoke an access or refresh token.

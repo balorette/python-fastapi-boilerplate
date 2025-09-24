@@ -172,12 +172,16 @@ class TestOAuth2JWTValidation:
 
         # Mock the UserService.get_user method
         with patch('app.services.user.UserService.get_user') as mock_get_user:
+            from datetime import datetime, timezone
             user_obj = User(
                 id=test_user_in_app["id"],
                 email=test_user_in_app["email"],
                 username=test_user_in_app.get("username", "testuser"),
                 full_name=test_user_in_app["full_name"],
-                is_active=test_user_in_app["is_active"]
+                is_active=test_user_in_app["is_active"],
+                is_superuser=test_user_in_app.get("is_superuser", False),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             mock_get_user.return_value = user_obj
 
@@ -349,12 +353,16 @@ class TestOAuth2JWTValidation:
         access_token = create_access_token(token_data)
 
         with patch('app.services.user.UserService.get_user') as mock_get_user:
+            from datetime import datetime, timezone
             user_obj = User(
                 id=test_user_in_app["id"],
                 email=test_user_in_app["email"],
                 username=test_user_in_app.get("username", "testuser"),
                 full_name=test_user_in_app["full_name"],
-                is_active=test_user_in_app["is_active"]
+                is_active=test_user_in_app["is_active"],
+                is_superuser=test_user_in_app.get("is_superuser", False),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             mock_get_user.return_value = user_obj
 

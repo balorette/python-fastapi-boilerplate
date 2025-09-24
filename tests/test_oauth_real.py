@@ -38,23 +38,24 @@ class TestOAuth2RealAuth:
                 "password": "TestPass123!",
                 "grant_type": "password"
             }
-        )            assert response.status_code == 200
-            token_data = response.json()
+        )            
+        assert response.status_code == 200
+        token_data = response.json()
             
-            # Validate response structure
-            assert "access_token" in token_data
-            assert "refresh_token" in token_data
-            assert token_data["token_type"] == "Bearer"
-            assert token_data["user_id"] == test_user_in_app["id"]
-            assert token_data["email"] == test_user_in_app["email"]
-            assert token_data["username"] == test_user_in_app["username"]
-            assert "expires_in" in token_data
-            
-            # Verify the token is a real JWT that can be decoded
-            from app.core.security import verify_token
-            decoded_user_id = verify_token(token_data["access_token"])
-            assert decoded_user_id is not None
-            assert int(decoded_user_id) == test_user_in_app["id"]
+        # Validate response structure
+        assert "access_token" in token_data
+        assert "refresh_token" in token_data
+        assert token_data["token_type"] == "Bearer"
+        assert token_data["user_id"] == self.test_user_in_app["id"]
+        assert token_data["email"] == self.test_user_in_app["email"]
+        assert token_data["username"] == self.test_user_in_app["username"]
+        assert "expires_in" in token_data
+        
+        # Verify the token is a real JWT that can be decoded
+        from app.core.security import verify_token
+        decoded_user_id = verify_token(token_data["access_token"])
+        assert decoded_user_id is not None
+        assert int(decoded_user_id) == test_user_in_app["id"]
 
     def test_oauth_login_invalid_credentials(self, client):
         """Test OAuth login with invalid credentials using real authentication flow."""

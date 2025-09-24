@@ -12,7 +12,7 @@ from app.services.oauth import GoogleOAuthProvider
 from app.models.user import User
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/oauth/login")
 
 
 async def get_current_user(
@@ -30,14 +30,16 @@ async def get_current_user(
         user_service = UserService(db)
         
         # First try to verify as local JWT token
-        user_id_str = verify_token(token)
-        if user_id_str is not None:
-            # Local JWT token - get user by ID
+        payload = verify_token(token)
+        if payload is not None:
+            # Local JWT token - get user by ID from payload
             try:
-                user_id = int(user_id_str)
-                user = await user_service.get_user(user_id)
-                if user and user.is_active:
-                    return user
+                user_id_str = payload.get("sub")
+                if user_id_str:
+                    user_id = int(user_id_str)
+                    user = await user_service.get_user(user_id)
+                    if user and user.is_active:
+                        return user
             except (ValueError, Exception):
                 pass  # Fall through to try Google token
         
