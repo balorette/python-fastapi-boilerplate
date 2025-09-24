@@ -4,39 +4,10 @@ A modern, production-ready FastAPI REST API.
 
 ## 🚀 Features
 
-- **FastAPI Framework**: High-performance, modern Python ### 🗄️ Additional Database Management
-
-```bash
-# Switch between databases
-./scripts/setup-db.sh sqlite      # Switch to SQLite
-./scripts/setup-db.sh postgresql  # Switch to PostgreSQL
-
-# View current database configuration
-grep "DATABASE_URL" .env
-```
-
-### ⚡ uv Quick Reference
-
-```bash
-# Fast setup (recommended)
-./scripts/setup-dev-uv.sh
-
-# Daily commands
-uv run uvicorn main:app --reload    # Start server
-uv run pytest                      # Run tests
-uv pip install package-name        # Install packages
-
-# Why uv?
-# • 10-100x faster than pip
-# • Better dependency resolution
-# • Modern Python tooling
-# Learn more: https://docs.astral.sh/uv/
-```
-
-## 🔧 Developmentork
+- **FastAPI Framework**: High-performance, modern Python web framework
 - **Async Support**: Full asynchronous support with SQLAlchemy and PostgreSQL/SQLite
 - **Flexible Database**: SQLite for development (default), PostgreSQL for production
-- **Authentication**: JWT-based authentication with OAuth2
+- **Authentication**: JWT-based authentication with OAuth2 + Google OAuth integration
 - **Database**: SQLite (dev) or PostgreSQL (prod) with SQLAlchemy ORM and Alembic migrations
 - **Caching**: Redis for session management and caching
 - **Testing**: Comprehensive test suite with pytest
@@ -320,14 +291,54 @@ REDIS_URL=redis://host:6379/0
 BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
 ```
 
-## 🔐 Security
+## 🔐 Authentication & Security
 
+### Local Authentication
 - JWT tokens for authentication
 - Password hashing with bcrypt
+- User registration and login endpoints
+
+### Google OAuth Integration
+- Complete Google OAuth 2.0 implementation
+- Auto-linking accounts by email
+- OAuth-only users (no password required)
+- Refresh token support for offline access
+- CSRF protection with session state validation
+
+### OAuth Setup
+1. **Google Cloud Console Setup:**
+   ```bash
+   # 1. Create OAuth 2.0 Client ID in Google Cloud Console
+   # 2. Enable Google+ API
+   # 3. Add redirect URI: http://localhost:8000/api/v1/auth/oauth/google/callback
+   ```
+
+2. **Environment Configuration:**
+   ```env
+   # Add to your .env file:
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback
+   ```
+
+3. **OAuth Endpoints:**
+   ```bash
+   # Start OAuth flow
+   GET  /api/v1/auth/oauth/google/authorize
+   
+   # Handle OAuth callback
+   POST /api/v1/auth/oauth/google/callback
+   
+   # Both local JWT and Google ID tokens work with:
+   GET  /api/v1/auth/me
+   ```
+
+### General Security Features
 - CORS configuration
 - SQL injection protection via SQLAlchemy
 - Input validation with Pydantic
 - Security headers and middleware
+- Google ID token validation using Google's public keys
 
 ## 📊 Monitoring and Logging
 
@@ -356,14 +367,40 @@ For support and questions:
 - Review the test files for usage examples
 - Open an issue for bugs or feature requests
 
+## 🔄 Upgrading from Previous Versions
+
+### Migrating to OAuth Support (v0.2.0)
+
+If you have an existing installation without OAuth support:
+
+```bash
+# Run the automated migration script
+./scripts/migrate-oauth.sh
+
+# Or follow the manual migration in CHANGELOG.md
+```
+
+This will:
+- Install OAuth dependencies
+- Update environment configuration
+- Run database migrations
+- Test OAuth functionality
+
+## 📖 Additional Documentation
+
+- **[OAUTH_IMPLEMENTATION.md](OAUTH_IMPLEMENTATION.md)** - Complete Google OAuth setup guide
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and migration guides
+- **[docs/architecture.md](docs/architecture.md)** - System architecture and design patterns
+- **[docs/deployment.md](docs/deployment.md)** - Production deployment guide
+- **[docs/development.md](docs/development.md)** - Development workflow and best practices
+
 ## 🔄 Next Steps
 
 After setup, consider implementing:
 
-- [ ] Database migrations with Alembic
-- [ ] User authentication and authorization
+- [ ] Additional OAuth providers (GitHub, Microsoft, etc.)
 - [ ] Rate limiting and request throttling
-- [ ] Caching strategies
+- [ ] Caching strategies with Redis
 - [ ] Background tasks with Celery
 - [ ] Monitoring with Prometheus/Grafana
 - [ ] CI/CD pipeline

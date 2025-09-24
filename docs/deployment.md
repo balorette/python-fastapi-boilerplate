@@ -26,6 +26,11 @@
    REDIS_URL=redis://redis-host:6379/0
    BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
    LOG_LEVEL=INFO
+   
+   # Google OAuth Configuration (required for OAuth features)
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_REDIRECT_URI=https://yourdomain.com/api/v1/auth/oauth/google/callback
    ```
 
 ### Docker Deployment

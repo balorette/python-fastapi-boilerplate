@@ -89,14 +89,29 @@ class UserService:
 
 ## Authentication & Authorization
 
+### Dual Authentication Strategy
+- **Local JWT Authentication**: Username/password with JWT tokens
+- **Google OAuth 2.0**: OAuth-based authentication with ID token validation
+- **Unified Token Validation**: Both token types work seamlessly
+
 ### JWT Strategy
 - Stateless authentication
-- Configurable expiration
-- Refresh token support (future)
+- Configurable expiration  
+- Local user token generation
+
+### OAuth Integration
+- Google OAuth 2.0 implementation
+- Auto-linking accounts by email
+- OAuth-only users (no password required)
+- Refresh token storage for offline access
+- CSRF protection with session state
 
 ### Security Measures
-- Password hashing (bcrypt)
+- Password hashing (bcrypt) for local users
+- Google ID token validation using Google's public keys
 - CORS configuration
+- Session middleware for OAuth state management
+- Email verification tracking
 - Rate limiting (future)
 - Input validation
 
