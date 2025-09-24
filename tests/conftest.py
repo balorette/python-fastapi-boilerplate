@@ -90,17 +90,21 @@ def client():
 
 
 @pytest.fixture
+async def async_session():
+    """Create async session fixture for tests that need it."""
+    sync_session = TestingSessionLocal()
+    mock_session = MockAsyncSession(sync_session)
+    try:
+        yield mock_session
+    finally:
+        sync_session.close()
+
+
+@pytest.fixture
 def auth_headers(client):
     """Get authentication headers for testing."""
-    # Login to get token
-    response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "admin", "password": "admin"}
-    )
-    
-    if response.status_code == 200:
-        token = response.json()["access_token"]
-        return {"Authorization": f"Bearer {token}"}
-    else:
-        # For tests that don't require real authentication
-        return {"Authorization": "Bearer test_token"}
+    # Since auth routes are disabled, create a test token directly
+    from app.core.security import create_access_token
+    token_data = {"sub": "1", "email": "test@example.com"}
+    token = create_access_token(token_data)
+    return {"Authorization": f"Bearer {token}"}

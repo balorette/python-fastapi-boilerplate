@@ -391,8 +391,8 @@ class UserService:
         superusers = await self.repository.count_records({'is_superuser': True})
         
         # Recent registrations (last 30 days)
-        from datetime import datetime, timedelta
-        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        from datetime import datetime, timedelta, timezone
+        thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         recent_registrations = await self.repository.count_records({
             'created_at': {'gte': thirty_days_ago}
         })

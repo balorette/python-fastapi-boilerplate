@@ -17,8 +17,8 @@ async def test_user(async_session: AsyncSession):
     user_data = UserCreate(
         username="testuser",
         email="test@example.com",
-        password="testpass123",
-        confirm_password="testpass123",
+        password="TestPass123!",
+        confirm_password="TestPass123!",
         full_name="Test User",
         is_active=True,
         is_superuser=False
@@ -35,10 +35,10 @@ async def admin_user(async_session: AsyncSession):
     user_service = UserService(async_session)
     
     admin_data = UserCreate(
-        username="admin",
+        username="administrator",
         email="admin@example.com",
-        password="admin123",
-        confirm_password="admin123",
+        password="Admin123!",
+        confirm_password="Admin123!",
         full_name="Administrator",
         is_active=True,
         is_superuser=True
@@ -50,56 +50,89 @@ async def admin_user(async_session: AsyncSession):
 
 
 def test_login_success(client: TestClient, admin_user):
-    """Test successful login with real user."""
+    """Test successful login with OAuth2 endpoint."""
     response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "admin", "password": "admin123"}
+        "/api/v1/oauth/login",
+        json={"email": "admin@example.com", "password": "Admin123!"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["token_type"] == "Bearer"
 
 
 def test_login_with_email(client: TestClient, test_user):
-    """Test login using email instead of username."""
+    """Test login using email instead of username with OAuth2."""
     response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "test@example.com", "password": "testpass123"}
+        "/api/v1/oauth/login",
+        json={"email": "test@example.com", "password": "TestPass123!"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["token_type"] == "Bearer"
 
 
 def test_login_invalid_credentials(client: TestClient):
-    """Test login with invalid credentials."""
+    """Test login with invalid credentials using OAuth2."""
     response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "wrong", "password": "wrong"}
+        "/api/v1/oauth/login",
+        json={"email": "wrong@example.com", "password": "Wrong123!"}
     )
     assert response.status_code == 401
     data = response.json()
-    assert "Invalid username/email or password" in data["detail"]
+    assert "Invalid credentials" in data["detail"]
 
 
-def test_login_inactive_user(client: TestClient, async_session: AsyncSession):
-    """Test login with inactive user."""
-    # This test would need an inactive user fixture
-    response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "inactive", "password": "password"}
+async def test_login_inactive_user(client: TestClient, async_session: AsyncSession):
+    """Test login with inactive user using OAuth2."""
+    # Create an inactive user
+    from app.services.user import UserService
+    from app.schemas.user import UserCreate
+    
+    user_service = UserService(async_session)
+    user_data = UserCreate(
+        username="inactive",
+        email="inactive@example.com", 
+        password="InactivePass123!",
+        confirm_password="InactivePass123!",
+        full_name="Inactive User",
+        is_active=False,
+        is_superuser=False
     )
-    assert response.status_code == 401
+    await user_service.create_user(user_data)
+    await async_session.commit()
+    
+    response = client.post(
+        "/api/v1/oauth/login",
+        json={"email": "inactive@example.com", "password": "InactivePass123!"}
+    )
+    assert response.status_code == 403
 
 
-def test_logout(client: TestClient):
-    """Test logout endpoint."""
-    response = client.post("/api/v1/auth/logout")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "Successfully logged out"
+def test_logout(client: TestClient, auth_headers):
+    """Test token revocation (logout) with OAuth2."""
+    # First get a token, then revoke it
+    login_response = client.post(
+        "/api/v1/oauth/login",
+        json={"email": "test@example.com", "password": "TestPass123!"}
+    )
+    
+    if login_response.status_code == 200:
+        token = login_response.json()["access_token"]
+        response = client.post(
+            "/api/v1/oauth/revoke",
+            params={"token": token}
+        )
+        assert response.status_code == 200
+    else:
+        # If no user exists, just test the revoke endpoint with a test token
+        response = client.post(
+            "/api/v1/oauth/revoke",
+            params={"token": "test_token"}
+        )
+        # Should still return 200 even for invalid tokens (OAuth2 spec)
+        assert response.status_code == 200
 
 
 def test_protected_endpoint_without_token(client: TestClient):

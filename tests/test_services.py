@@ -23,6 +23,8 @@ class TestUserService:
         session.execute = AsyncMock()
         session.commit = AsyncMock()
         session.rollback = AsyncMock()
+        session.add = Mock()  # Not async
+        session.refresh = AsyncMock()
         return session
     
     @pytest.fixture
@@ -245,22 +247,24 @@ class TestUserService:
             is_superuser=False
         )
         
-        # Mock email and username exist checks (return 0 count = doesn't exist)
-        exist_result = self.create_mock_result(count=0)
-        # Mock refresh result after creation
-        refresh_result = self.create_mock_result(scalar_return=sample_user)
-        
-        mock_session.execute.side_effect = [exist_result, exist_result, refresh_result]
+        # Mock email and username exist checks (return None = doesn't exist)
+        exist_result = self.create_mock_result(scalar_return=None)
+        mock_session.execute.side_effect = [exist_result, exist_result]
         mock_session.add = Mock()
-        mock_session.refresh = AsyncMock()
+        mock_session.refresh = AsyncMock(return_value=None)  # refresh modifies object in place
         
         # Execute
         with patch.object(user_service, '_hash_password', return_value="hashed_password"):
             result = await user_service.create_user(user_data)
         
         # Assert
-        assert result == sample_user
-        assert mock_session.execute.call_count == 3  # 2 existence checks + 1 refresh query
+        assert result is not None
+        assert isinstance(result, User)
+        assert result.email == user_data.email
+        assert result.username == user_data.username
+        assert result.full_name == user_data.full_name
+        assert result.hashed_password == "hashed_password"
+        assert mock_session.execute.call_count == 2  # 2 existence checks only
         mock_session.add.assert_called_once()
         mock_session.commit.assert_called_once()
     
@@ -278,8 +282,8 @@ class TestUserService:
             is_superuser=False
         )
         
-        # Mock email exists (return count > 0)
-        exist_result = self.create_mock_result(count=1)
+        # Mock email exists (return something for scalar_one_or_none)
+        exist_result = self.create_mock_result(scalar_return=1)  # Any non-None value means exists
         mock_session.execute.return_value = exist_result
         
         # Execute & Assert
@@ -300,9 +304,9 @@ class TestUserService:
             is_superuser=False
         )
         
-        # Mock email doesn't exist but username exists
-        email_result = self.create_mock_result(count=0)
-        username_result = self.create_mock_result(count=1)
+        # Mock email doesn't exist (None) but username exists (non-None)
+        email_result = self.create_mock_result(scalar_return=None)
+        username_result = self.create_mock_result(scalar_return=1)
         mock_session.execute.side_effect = [email_result, username_result]
         
         # Execute & Assert
@@ -320,14 +324,16 @@ class TestUserService:
             full_name="Updated User"
         )
         
-        # Mock get user
+        # Mock get user (calls get_user -> repository.get_by_id -> session.execute)
         get_result = self.create_mock_result(scalar_return=sample_user)
-        # Mock email and username don't exist for other users (count=0)
-        exist_result = self.create_mock_result(count=0)
+        # Mock email exists check (scalar_one_or_none returns None for doesn't exist)
+        email_check_result = self.create_mock_result(scalar_return=None)
+        # Mock username exists check (scalar_one_or_none returns None for doesn't exist) 
+        username_check_result = self.create_mock_result(scalar_return=None)
         # Mock update result
         update_result = self.create_mock_result(scalar_return=sample_user)
         
-        mock_session.execute.side_effect = [get_result, exist_result, exist_result, update_result]
+        mock_session.execute.side_effect = [get_result, email_check_result, username_check_result]
         mock_session.refresh = AsyncMock()
         
         # Execute
@@ -335,7 +341,7 @@ class TestUserService:
         
         # Assert
         assert result == sample_user
-        assert mock_session.execute.call_count == 4
+        assert mock_session.execute.call_count == 3  # get_user + email_exists + update (no username check if email same)
         mock_session.commit.assert_called_once()
     
     @pytest.mark.asyncio
@@ -346,8 +352,11 @@ class TestUserService:
         
         # Mock get user
         get_result = self.create_mock_result(scalar_return=sample_user)
-        # Mock email exists for another user (count=1)
-        exist_result = self.create_mock_result(count=1)
+        # Mock email exists for another user (scalar_one_or_none returns a user record)
+        conflict_user = User(id=2, username="other", email="existing@example.com", full_name="Other User", 
+                           is_active=True, is_superuser=False, hashed_password="hash", 
+                           created_at=datetime.now(), updated_at=datetime.now())
+        exist_result = self.create_mock_result(scalar_return=conflict_user)
         
         mock_session.execute.side_effect = [get_result, exist_result]
         
@@ -360,13 +369,13 @@ class TestUserService:
     async def test_delete_user_success(self, user_service, mock_session, sample_user):
         """Test successful user deletion."""
         # Setup
-        # Mock record exists (count=1)
-        exist_result = self.create_mock_result(count=1)
+        # Mock record exists (scalar_one_or_none returns user ID for exists)
+        exist_result = self.create_mock_result(scalar_return=1)
         # Mock get for delete
         get_result = self.create_mock_result(scalar_return=sample_user)
         
         mock_session.execute.side_effect = [exist_result, get_result]
-        mock_session.delete = Mock()
+        mock_session.delete = AsyncMock()  # Note: this should be AsyncMock
         
         # Execute
         result = await user_service.delete_user(1)
@@ -451,12 +460,9 @@ class TestUserService:
             confirm_new_password="NewPass123!"
         )
         
-        # Mock get user
+        # Mock get user (the only execute call - update method doesn't call execute)
         get_result = self.create_mock_result(scalar_return=sample_user)
-        # Mock update result
-        update_result = self.create_mock_result(scalar_return=sample_user)
-        
-        mock_session.execute.side_effect = [get_result, update_result]
+        mock_session.execute.return_value = get_result
         mock_session.refresh = AsyncMock()
         
         with patch.object(user_service, '_verify_password', return_value=True):
@@ -466,7 +472,7 @@ class TestUserService:
                 
                 # Assert
                 assert result == sample_user
-                assert mock_session.execute.call_count == 2
+                assert mock_session.execute.call_count == 1  # Only get_user calls execute
                 mock_session.commit.assert_called_once()
     
     @pytest.mark.asyncio

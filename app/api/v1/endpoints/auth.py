@@ -12,7 +12,7 @@ from app.core.database import get_async_db
 from app.core.security import create_access_token
 from app.core.exceptions import AuthenticationError, ValidationError
 from app.services.user import UserService
-from app.services.oauth import GoogleOAuthService
+from app.services.oauth import GoogleOAuthProvider
 from app.schemas.user import Token, UserResponse
 from app.schemas.oauth import GoogleAuthURL, OAuthLoginRequest, OAuthLoginResponse
 
@@ -65,7 +65,7 @@ async def google_authorize(request: Request) -> Any:
             detail="Google OAuth is not enabled"
         )
     
-    oauth_service = GoogleOAuthService()
+    oauth_service = GoogleOAuthProvider()
     
     if not oauth_service.is_enabled():
         raise HTTPException(

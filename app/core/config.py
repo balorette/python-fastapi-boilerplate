@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = Field(
         default=24, description="Password reset token expiration time in hours"
     )
+    
+    # JWT OAuth2 Configuration
+    JWT_ISSUER: str = Field(
+        default="https://your-api.com", 
+        description="JWT issuer claim (iss) for OAuth2 compliance"
+    )
+    JWT_AUDIENCE: str = Field(
+        default="your-frontend-app", 
+        description="JWT audience claim (aud) for OAuth2 compliance"
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=30, 
+        description="Refresh token expiration in days"
+    )
     #OAtuhProviders
 
     #Google
@@ -99,3 +113,8 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Get application settings."""
+    return settings

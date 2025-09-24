@@ -1,7 +1,10 @@
-"""Security utilities for authentication and authorization."""
+"""OAuth2-compliant security utilities for authentication and authorization."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Union, Optional, Dict, Any
+from typing import Any
+import secrets
+import hashlib
+import base64
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -13,23 +16,30 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_access_token(
-    data: dict, expires_delta: Optional[timedelta] = None
+    data: dict[str, Any], 
+    expires_delta: timedelta | None = None,
+    expires_delta_minutes: int | None = None
 ) -> str:
-    """Create JWT access token with enhanced payload."""
+    """Create OAuth2-compliant JWT access token."""
     to_encode = data.copy()
     
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
+    elif expires_delta_minutes:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=expires_delta_minutes)
     else:
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    # Add standard JWT claims
+    # OAuth2/OIDC standard claims
     to_encode.update({
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-        "type": "access"
+        "exp": int(expire.timestamp()),
+        "iat": int(datetime.now(timezone.utc).timestamp()),
+        "nbf": int(datetime.now(timezone.utc).timestamp()),
+        "iss": settings.JWT_ISSUER,  # Token issuer
+        "aud": settings.JWT_AUDIENCE,  # Token audience
+        "token_type": "access_token"
     })
     
     encoded_jwt = jwt.encode(
@@ -38,34 +48,76 @@ def create_access_token(
     return encoded_jwt
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify JWT token and return user ID."""
+def create_refresh_token(user_id: int | str) -> str:
+    """Create refresh token for token renewal."""
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
+    
+    to_encode = {
+        "sub": str(user_id),
+        "exp": int(expire.timestamp()),
+        "iat": int(datetime.now(timezone.utc).timestamp()),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "token_type": "refresh_token"
+    }
+    
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def generate_pkce_pair() -> tuple[str, str]:
+    """Generate PKCE code verifier and challenge for secure OAuth2 flow."""
+    # Generate cryptographically random code verifier
+    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+    
+    # Create code challenge using SHA256
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).decode('utf-8').rstrip('=')
+    
+    return code_verifier, code_challenge
+
+
+def verify_pkce(code_verifier: str, code_challenge: str) -> bool:
+    """Verify PKCE code verifier against challenge."""
+    expected_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).decode('utf-8').rstrip('=')
+    
+    return expected_challenge == code_challenge
+
+
+def verify_token(token: str, token_type: str = "access_token") -> dict[str, Any] | None:
+    """Verify JWT token and return payload with type checking."""
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER
         )
         
-        # Check token type
-        token_type = payload.get("type")
-        if token_type != "access":
+        # Verify token type
+        if payload.get("token_type") != token_type:
             return None
             
-        # Extract user ID (stored in 'sub' field)
-        user_id = payload.get("sub")
-        if user_id is None:
-            return None
-            
-        return user_id
+        return payload
         
     except JWTError:
         return None
 
 
-def decode_token(token: str) -> Optional[Dict[str, Any]]:
+def decode_token(token: str) -> dict[str, Any] | None:
     """Decode JWT token and return full payload."""
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER
         )
         return payload
     except JWTError:
@@ -97,7 +149,7 @@ def generate_password_reset_token(email: str) -> str:
     return encoded_jwt
 
 
-def verify_password_reset_token(token: str) -> Optional[str]:
+def verify_password_reset_token(token: str) -> str | None:
     """Verify password reset token and return email."""
     try:
         decoded_token = jwt.decode(
