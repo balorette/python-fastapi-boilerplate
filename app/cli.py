@@ -5,9 +5,8 @@ import getpass
 
 import typer
 
-from app.core.database import AsyncSessionLocal, async_engine
+from app.core.database import get_async_db_context, close_database_connections, init_database
 from app.core.exceptions import ConflictError
-from app.models.base import Base
 from app.schemas.user import UserCreate
 from app.services.user import UserService
 
@@ -20,8 +19,8 @@ async def create_admin_user(
     password: str,
     full_name: str | None = None
 ) -> None:
-    """Create an admin user."""
-    async with AsyncSessionLocal() as session:
+    """Create an admin user using enhanced database context."""
+    async with get_async_db_context() as session:
         user_service = UserService(session)
 
         try:
@@ -38,7 +37,7 @@ async def create_admin_user(
 
             # Create the admin user
             admin_user = await user_service.create_user(admin_data)
-            await session.commit()
+            # Note: commit is handled by the context manager
 
             typer.echo(f"✅ Admin user '{username}' created successfully!")
             typer.echo(f"   Email: {admin_user.email}")
@@ -48,7 +47,6 @@ async def create_admin_user(
             typer.echo(f"❌ Error: {e}")
             raise typer.Exit(1)
         except Exception as e:
-            await session.rollback()
             typer.echo(f"❌ Unexpected error: {e}")
             raise typer.Exit(1)
 
@@ -84,8 +82,15 @@ def init_admin(
             raise typer.Exit(0)
 
     # Create the admin user
+    async def _create_user_and_cleanup():
+        try:
+            await create_admin_user(username, email, password, full_name)
+        finally:
+            # Ensure proper database cleanup
+            await close_database_connections()
+
     try:
-        asyncio.run(create_admin_user(username, email, password, full_name))
+        asyncio.run(_create_user_and_cleanup())
     except KeyboardInterrupt:
         typer.echo("\n❌ Admin user creation cancelled.")
         raise typer.Exit(1)
@@ -96,15 +101,17 @@ def init_db():
     """Initialize the database by creating all tables."""
 
     async def _init_db():
-        async with async_engine.begin() as conn:
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
-            typer.echo("✅ Database tables created successfully!")
+        try:
+            await init_database()
+            typer.echo("✅ Database initialized successfully!")
+        except Exception as e:
+            typer.echo(f"❌ Error initializing database: {e}")
+            raise
 
     try:
         asyncio.run(_init_db())
     except Exception as e:
-        typer.echo(f"❌ Error initializing database: {e}")
+        typer.echo(f"❌ Database initialization failed: {e}")
         raise typer.Exit(1)
 
 
@@ -119,23 +126,6 @@ def setup(
 
     typer.echo("🚀 Setting up the application...")
 
-    # Initialize database
-    typer.echo("\n1. Initializing database...")
-
-    async def _init_db():
-        async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    try:
-        asyncio.run(_init_db())
-        typer.echo("✅ Database initialized successfully!")
-    except Exception as e:
-        typer.echo(f"❌ Database initialization failed: {e}")
-        raise typer.Exit(1)
-
-    # Create admin user
-    typer.echo("\n2. Creating admin user...")
-
     # Get password if not provided
     if not password:
         password = getpass.getpass("Enter admin password: ")
@@ -145,18 +135,36 @@ def setup(
             typer.echo("❌ Passwords do not match!")
             raise typer.Exit(1)
 
+    async def _complete_setup():
+        try:
+            # Initialize database
+            typer.echo("\n1. Initializing database...")
+            await init_database()
+            typer.echo("✅ Database initialized successfully!")
+
+            # Create admin user
+            typer.echo("\n2. Creating admin user...")
+            await create_admin_user(username, email, password, full_name)
+            typer.echo("✅ Admin user created successfully!")
+
+        except Exception as e:
+            typer.echo(f"❌ Setup failed: {e}")
+            raise
+        finally:
+            # Ensure proper database cleanup
+            await close_database_connections()
+
     try:
-        asyncio.run(create_admin_user(username, email, password, full_name))
-        typer.echo("✅ Admin user created successfully!")
+        asyncio.run(_complete_setup())
     except Exception as e:
-        typer.echo(f"❌ Admin user creation failed: {e}")
+        typer.echo(f"❌ Setup failed: {e}")
         raise typer.Exit(1)
 
     typer.echo("\n🎉 Application setup completed successfully!")
     typer.echo("\n📝 Admin credentials:")
     typer.echo(f"   Username: {username}")
     typer.echo(f"   Email: {email}")
-    typer.echo("\n🔗 You can now start the server and login at: /api/v1/auth/login")
+    typer.echo("\n🔗 You can now start the server and login at: /api/v1/oauth/login")
 
 
 if __name__ == "__main__":

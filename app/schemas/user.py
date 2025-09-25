@@ -20,7 +20,7 @@ class UserBase(BaseModel):
         """Validate username format."""
         if not re.match(r'^[a-zA-Z0-9_-]+$', v):
             raise ValueError('Username can only contain letters, numbers, underscores, and hyphens')
-        if v.lower() in ['admin', 'root', 'api', 'test', 'user']:
+        if v.lower() in ['root', 'api', 'test', 'user']:
             raise ValueError('Username is reserved')
         return v.lower()
 
