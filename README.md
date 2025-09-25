@@ -324,7 +324,7 @@ BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
    ```bash
    # 1. Create OAuth 2.0 Client ID in Google Cloud Console
    # 2. Enable Google+ API
-   # 3. Add redirect URI: http://localhost:8000/api/v1/auth/oauth/google/callback
+   # 3. Add redirect URI: http://localhost:8000/api/v1/auth/callback/google
    ```
 
 2. **Environment Configuration:**
@@ -332,19 +332,35 @@ BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
    # Add to your .env file:
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret
-   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback/google
    ```
 
 3. **OAuth Endpoints:**
    ```bash
-   # Start OAuth flow
-   GET  /api/v1/auth/oauth/google/authorize
-   
-   # Handle OAuth callback
-   POST /api/v1/auth/oauth/google/callback
-   
-   # Both local JWT and Google ID tokens work with:
-   GET  /api/v1/auth/me
+   # Start OAuth flow (supports multiple providers)
+   POST /api/v1/auth/authorize
+     Body: { "provider": "google" }
+
+   # Exchange authorization code for tokens
+   POST /api/v1/auth/token
+     Body: { "code": "auth_code", "state": "csrf_token" }
+
+   # Local username/password login
+   POST /api/v1/auth/login
+     Body: { "username": "email", "password": "password" }
+
+   # Refresh access token
+   POST /api/v1/auth/refresh
+     Body: { "refresh_token": "token" }
+
+   # Handle OAuth provider callbacks
+   GET  /api/v1/auth/callback/{provider}
+
+   # Revoke tokens
+   POST /api/v1/auth/revoke
+
+   # List available OAuth providers
+   GET  /api/v1/auth/providers
    ```
 
 ### General Security Features
@@ -402,7 +418,7 @@ This will:
 
 ## 📖 Additional Documentation
 
-- **[OAUTH_IMPLEMENTATION.md](OAUTH_IMPLEMENTATION.md)** - Complete Google OAuth setup guide
+- **[docs/features/OAUTH_IMPLEMENTATION.md](docs/features/OAUTH_IMPLEMENTATION.md)** - Complete OAuth setup guide
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and migration guides
 - **[docs/architecture.md](docs/architecture.md)** - System architecture and design patterns
 - **[docs/deployment.md](docs/deployment.md)** - Production deployment guide

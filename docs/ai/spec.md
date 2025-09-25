@@ -90,16 +90,14 @@ Tooling:
 ├── /health           # System health checks
 │   ├── GET /        # Basic health
 │   └── GET /detailed # Detailed health with dependencies
-├── /auth            # Authentication endpoints
-│   ├── POST /login  # Local login
-│   ├── POST /logout # Logout
-│   ├── POST /refresh # Token refresh
-│   └── GET /me      # Current user info
-├── /oauth           # OAuth2 endpoints
-│   ├── GET /providers # List OAuth providers
-│   ├── POST /authorize # Start OAuth flow
-│   ├── POST /token    # Token exchange
-│   └── POST /callback # OAuth callback
+├── /auth            # Unified OAuth2 authentication endpoints
+│   ├── POST /authorize # Start OAuth flow (any provider)
+│   ├── POST /token    # Exchange authorization code for tokens
+│   ├── POST /login    # Local username/password login
+│   ├── POST /refresh  # Refresh access token
+│   ├── GET /callback/{provider} # OAuth provider callbacks
+│   ├── POST /revoke   # Revoke tokens
+│   └── GET /providers # List available OAuth providers
 └── /users           # User management
     ├── GET /        # List users (paginated)
     ├── POST /       # Create user
@@ -118,12 +116,12 @@ Tooling:
 5. Client includes token in Authorization header
 
 #### OAuth2 Flow (with PKCE)
-1. Client requests `/oauth/authorize` with provider
-2. System generates PKCE challenge
-3. User redirected to provider
-4. Provider redirects back with code
-5. Client exchanges code at `/oauth/token`
-6. System validates and creates/links user
+1. Client requests `/auth/authorize` with provider
+2. System generates state for CSRF protection
+3. User redirected to provider (e.g., Google)
+4. Provider redirects to `/auth/callback/{provider}` with code
+5. Client exchanges code at `/auth/token`
+6. System validates and creates/links user by email
 7. System returns JWT tokens
 
 ### 3.3 Data Models
