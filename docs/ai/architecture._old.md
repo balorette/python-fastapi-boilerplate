@@ -2,7 +2,7 @@
 
 ## Overview
 
-The IAC API follows a layered architecture pattern that promotes separation of concerns, maintainability, and scalability.
+The FastAPI API based boilerplat follows a layered architecture pattern that promotes separation of concerns, maintainability, and scalability.
 
 ## Architecture Layers
 
