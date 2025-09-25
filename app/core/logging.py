@@ -1,8 +1,6 @@
 """Logging configuration."""
 
 import logging
-import sys
-from typing import Any, Dict
 
 import structlog
 from rich.console import Console

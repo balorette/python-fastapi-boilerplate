@@ -1,6 +1,7 @@
 """Pagination schemas for API responses."""
 
-from typing import List, TypeVar, Generic, Optional
+from typing import Generic, TypeVar
+
 from pydantic import BaseModel, Field, field_validator
 
 T = TypeVar('T')
@@ -10,8 +11,8 @@ class PaginationParams(BaseModel):
     """Standard pagination parameters."""
     skip: int = Field(0, ge=0, description="Number of records to skip")
     limit: int = Field(100, ge=1, le=1000, description="Maximum number of records to return")
-    order_by: Optional[str] = Field(None, description="Field to order by (prefix with - for desc)")
-    
+    order_by: str | None = Field(None, description="Field to order by (prefix with - for desc)")
+
     @field_validator('order_by')
     @classmethod
     def validate_order_by(cls, v):
@@ -27,7 +28,7 @@ class PaginationParams(BaseModel):
 class SearchParams(PaginationParams):
     """Search parameters with pagination."""
     query: str = Field(..., min_length=1, max_length=255, description="Search query string")
-    
+
     @field_validator('query')
     @classmethod
     def validate_query(cls, v):
@@ -37,8 +38,8 @@ class SearchParams(PaginationParams):
 
 class FilterParams(PaginationParams):
     """Advanced filtering parameters."""
-    filters: Optional[dict] = Field(None, description="Dynamic filters")
-    
+    filters: dict | None = Field(None, description="Dynamic filters")
+
     @field_validator('filters')
     @classmethod
     def validate_filters(cls, v):
@@ -53,7 +54,7 @@ class FilterParams(PaginationParams):
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Generic paginated response wrapper."""
-    items: List[T] = Field(..., description="List of items")
+    items: list[T] = Field(..., description="List of items")
     total: int = Field(..., ge=0, description="Total number of items")
     skip: int = Field(..., ge=0, description="Number of items skipped")
     limit: int = Field(..., ge=1, description="Maximum items per page")
@@ -61,11 +62,11 @@ class PaginatedResponse(BaseModel, Generic[T]):
     has_prev: bool = Field(..., description="Whether there are previous items")
     page: int = Field(..., ge=1, description="Current page number")
     total_pages: int = Field(..., ge=1, description="Total number of pages")
-    
+
     @classmethod
     def create(
         cls,
-        items: List[T],
+        items: list[T],
         total: int,
         skip: int = 0,
         limit: int = 100
@@ -75,7 +76,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
         total_pages = max(1, (total + limit - 1) // limit)
         has_next = skip + limit < total
         has_prev = skip > 0
-        
+
         return cls(
             items=items,
             total=total,
@@ -90,9 +91,9 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 class DateRangeParams(BaseModel):
     """Date range filtering parameters."""
-    start_date: Optional[str] = Field(None, description="Start date (ISO format)")
-    end_date: Optional[str] = Field(None, description="End date (ISO format)")
-    
+    start_date: str | None = Field(None, description="Start date (ISO format)")
+    end_date: str | None = Field(None, description="End date (ISO format)")
+
     @field_validator('start_date', 'end_date')
     @classmethod
     def validate_date_format(cls, v):
@@ -103,7 +104,7 @@ class DateRangeParams(BaseModel):
             except ValueError:
                 raise ValueError('Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)')
         return v
-    
+
     @field_validator('end_date')
     @classmethod
     def validate_date_range(cls, v, info):

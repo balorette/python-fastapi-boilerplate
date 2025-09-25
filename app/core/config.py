@@ -1,6 +1,5 @@
 """Application configuration settings."""
 
-from typing import List, Optional, Union
 
 from pydantic import AnyHttpUrl, Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,12 +31,36 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30, description="Access token expiration time"
     )
+    EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = Field(
+        default=24, description="Password reset token expiration time in hours"
+    )
+
+    # JWT OAuth2 Configuration
+    JWT_ISSUER: str = Field(
+        default="https://your-api.com",
+        description="JWT issuer claim (iss) for OAuth2 compliance"
+    )
+    JWT_AUDIENCE: str = Field(
+        default="your-frontend-app",
+        description="JWT audience claim (aud) for OAuth2 compliance"
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=30,
+        description="Refresh token expiration in days"
+    )
+    #OAtuhProviders
+
+    #Google
+    GOOGLE_OAUTH_ENABLED: bool = Field(default=False, description="Use Google OAuth")
+    GOOGLE_CLIENT_ID: str = Field(description="Google Client ID", default="your-google-client-id")
+    GOOGLE_CLIENT_SECRET: str = Field(description="Google Client Secret", default="your-google-client-secret")
+    GOOGLE_REDIRECT_URI: str = Field(description="Google Redirect URI", default="your-google-redirect-uri")
 
     # Database
-    DATABASE_URL: Optional[Union[PostgresDsn, str]] = Field(
+    DATABASE_URL: PostgresDsn | str | None = Field(
         default="sqlite:///./app.db", description="Database URL"
     )
-    DATABASE_URL_ASYNC: Optional[Union[PostgresDsn, str]] = Field(
+    DATABASE_URL_ASYNC: PostgresDsn | str | None = Field(
         default="sqlite+aiosqlite:///./app.db", description="Async database URL"
     )
     DATABASE_TYPE: str = Field(default="sqlite", description="Database type")
@@ -60,13 +83,13 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis URL")
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = Field(
+    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = Field(
         default=[], description="CORS origins"
     )
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         """Assemble CORS origins from environment variable."""
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
@@ -89,3 +112,8 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Get application settings."""
+    return settings

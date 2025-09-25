@@ -2,39 +2,77 @@
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db, get_async_db
+from app.core.database import get_async_db
+from app.core.exceptions import AuthenticationError
 from app.core.security import verify_token
+from app.models.user import User
+from app.services.oauth import GoogleOAuthProvider
 from app.services.user import UserService
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/oauth/login")
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-):
-    """Get current authenticated user."""
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db)
+) -> User:
+    """Get current authenticated user supporting both local JWT and Google ID tokens."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    username = verify_token(token)
-    if username is None:
+    try:
+        user_service = UserService(db)
+
+        # First try to verify as local JWT token
+        payload = verify_token(token)
+        if payload is not None:
+            # Local JWT token - get user by ID from payload
+            try:
+                user_id_str = payload.get("sub")
+                if user_id_str:
+                    user_id = int(user_id_str)
+                    user = await user_service.get_user(user_id)
+                    if user and user.is_active:
+                        return user
+            except (ValueError, Exception):
+                pass  # Fall through to try Google token
+
+        # Try to verify as Google ID token
+        try:
+            oauth_service = GoogleOAuthProvider()
+            id_info = await oauth_service.validate_id_token(token)
+
+            # Extract Google user ID
+            google_user_id = id_info.get("sub")
+            if google_user_id:
+                user = await user_service.authenticate_oauth_user("google", google_user_id)
+                if user and user.is_active:
+                    return user
+        except Exception:
+            pass  # Not a valid Google token
+
+        # If we get here, token validation failed
         raise credentials_exception
 
-    # In a real application, you would fetch the user from database
-    # For demo purposes, returning mock user
-    return {"username": username, "id": 1}
+    except AuthenticationError:
+        raise credentials_exception
+    except Exception:
+        raise credentials_exception
 
 
-def get_current_active_user(current_user: dict = Depends(get_current_user)):
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user."""
-    # In a real application, you would check if user is active
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated"
+        )
     return current_user
 
 

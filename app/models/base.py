@@ -1,9 +1,8 @@
 """Base model with common fields."""
 
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import DateTime, func, MetaData
+from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Enhanced metadata with naming convention for better constraint naming
@@ -20,9 +19,9 @@ metadata = MetaData(
 
 class Base(DeclarativeBase):
     """Base model class with common fields."""
-    
+
     metadata = metadata
-    
+
     # Common fields
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())

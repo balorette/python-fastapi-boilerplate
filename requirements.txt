@@ -17,6 +17,10 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
 
+# OAuth
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+
 # HTTP client
 httpx>=0.25.0
 
