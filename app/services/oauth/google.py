@@ -1,22 +1,21 @@
 """Google OAuth provider implementation."""
 
-import secrets
 import asyncio
-from urllib.parse import urlencode
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
 from app.core.config import settings
-from app.services.oauth.base import BaseOAuthProvider
 from app.core.exceptions import AuthenticationError
+from app.services.oauth.base import BaseOAuthProvider
 
 
 class GoogleOAuthProvider(BaseOAuthProvider):
     """Google OAuth 2.0 provider implementation."""
-    
+
     def __init__(self):
         """Initialize Google OAuth provider."""
         self.client_id = settings.GOOGLE_CLIENT_ID
@@ -26,10 +25,10 @@ class GoogleOAuthProvider(BaseOAuthProvider):
         self.userinfo_uri = "https://www.googleapis.com/oauth2/v2/userinfo"
         self.scopes = [
             "openid",
-            "profile", 
+            "profile",
             "email"
         ]
-    
+
     async def get_authorization_url(
         self,
         redirect_uri: str,
@@ -43,20 +42,20 @@ class GoogleOAuthProvider(BaseOAuthProvider):
             "client_id": self.client_id,
             "redirect_uri": redirect_uri,
             "scope": scope or " ".join(self.scopes),
-            "access_type": "offline",  # Request refresh token  
+            "access_type": "offline",  # Request refresh token
             "prompt": "consent",  # Force consent screen to get refresh token
             "state": state,
         }
-        
+
         # Add PKCE parameters if provided
         if code_challenge:
             params.update({
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256"
             })
-        
+
         return f"{self.auth_uri}?{urlencode(params)}"
-    
+
     async def exchange_code_for_tokens(
         self,
         code: str,
@@ -71,11 +70,11 @@ class GoogleOAuthProvider(BaseOAuthProvider):
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
         }
-        
+
         # Add PKCE verifier if provided
         if code_verifier:
             data["code_verifier"] = code_verifier
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(self.token_uri, data=data)
@@ -85,7 +84,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                 raise AuthenticationError(f"Token exchange failed: {e.response.text}")
             except Exception as e:
                 raise AuthenticationError(f"Token exchange error: {str(e)}")
-    
+
     async def validate_id_token(self, id_token_str: str) -> dict[str, Any]:
         """Validate Google ID token using Google's public keys."""
         try:
@@ -96,21 +95,21 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                     google_requests.Request(),
                     self.client_id
                 )
-            
+
             loop = asyncio.get_event_loop()
             id_info = await loop.run_in_executor(None, _validate)
-            
+
             return id_info
-            
+
         except ValueError as e:
             raise AuthenticationError(f"Invalid ID token: {str(e)}")
         except Exception as e:
             raise AuthenticationError(f"ID token validation error: {str(e)}")
-    
+
     async def get_user_info(self, access_token: str) -> dict[str, Any]:
-        """Get user information from Google's userinfo endpoint.""" 
+        """Get user information from Google's userinfo endpoint."""
         headers = {"Authorization": f"Bearer {access_token}"}
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(self.userinfo_uri, headers=headers)
@@ -120,7 +119,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                 raise AuthenticationError(f"Failed to get user info: {e.response.text}")
             except Exception as e:
                 raise AuthenticationError(f"User info error: {str(e)}")
-    
+
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh Google access token."""
         data = {
@@ -129,7 +128,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
         }
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(self.token_uri, data=data)

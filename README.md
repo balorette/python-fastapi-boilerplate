@@ -10,8 +10,8 @@ A modern, production-ready FastAPI REST API.
 - **Authentication**: JWT-based authentication with OAuth2 + Google OAuth integration
 - **Database**: SQLite (dev) or PostgreSQL (prod) with SQLAlchemy ORM and Alembic migrations
 - **Caching**: Redis for session management and caching
-- **Testing**: Comprehensive test suite with pytest
-- **Code Quality**: Pre-commit hooks, Black, isort, flake8, and mypy
+- **Testing**: Comprehensive test suite with pytest, async support, and UUID-based test isolation
+- **Code Quality**: Modern tooling with Ruff (linting, formatting, import sorting) and pre-commit hooks
 - **Docker**: Multi-stage Docker builds and docker-compose for development
 - **Documentation**: Automatic API documentation with Swagger/OpenAPI
 - **Monitoring**: Structured logging with configurable levels
@@ -19,7 +19,7 @@ A modern, production-ready FastAPI REST API.
 
 ## 📋 Requirements
 
-- Python 3.11+
+- Python 3.12+
 - Package Manager: **uv** (recommended) or pip + venv
 - SQLite (included with Python) OR PostgreSQL 13+
 - Redis 6+ (optional, for caching)
@@ -221,16 +221,23 @@ grep "DATABASE_URL" .env
 
 ### Code Formatting and Linting
 
-```bash
-# Run all code quality checks
-./scripts/lint.sh
+This project uses **Ruff** for ultra-fast linting, formatting, and import sorting:
 
-# Or run individually
-black .                 # Format code
-isort .                 # Sort imports
-flake8 .               # Lint code
-mypy app/              # Type check
+```bash
+# Run all code quality checks (10-100x faster than legacy tools)
+ruff check              # Lint code
+ruff format             # Format code
+ruff check --fix        # Auto-fix issues
+
+# Run all checks together
+./scripts/lint.sh
 ```
+
+**Ruff Benefits:**
+- 10-100x faster than Black, isort, flake8, mypy combined
+- Single tool replaces multiple legacy tools
+- Modern Python 3.12+ patterns and optimizations
+- Automatic import sorting and unused import removal
 
 ### Pre-commit Hooks
 

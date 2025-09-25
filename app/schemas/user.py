@@ -1,19 +1,19 @@
 """Enhanced user schemas with comprehensive validation."""
 
-from typing import Optional, List
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 import re
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
     """Base user schema with enhanced validation."""
     username: str = Field(..., min_length=3, max_length=50, description="Unique username")
     email: EmailStr = Field(..., description="Valid email address")
-    full_name: Optional[str] = Field(None, max_length=255, description="User's full name")
+    full_name: str | None = Field(None, max_length=255, description="User's full name")
     is_active: bool = Field(True, description="Whether the user account is active")
     is_superuser: bool = Field(False, description="Whether the user has admin privileges")
-    
+
     @field_validator('username')
     @classmethod
     def validate_username(cls, v):
@@ -23,7 +23,7 @@ class UserBase(BaseModel):
         if v.lower() in ['admin', 'root', 'api', 'test', 'user']:
             raise ValueError('Username is reserved')
         return v.lower()
-    
+
     @field_validator('full_name')
     @classmethod
     def validate_full_name(cls, v):
@@ -41,7 +41,7 @@ class UserCreate(UserBase):
     """Schema for user creation with password requirements."""
     password: str = Field(..., min_length=8, max_length=128, description="Strong password")
     confirm_password: str = Field(..., description="Password confirmation")
-    
+
     @field_validator('password')
     @classmethod
     def validate_password_strength(cls, v):
@@ -57,7 +57,7 @@ class UserCreate(UserBase):
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
             raise ValueError('Password must contain at least one special character')
         return v
-    
+
     @field_validator('confirm_password')
     @classmethod
     def validate_password_match(cls, v, info):
@@ -65,7 +65,7 @@ class UserCreate(UserBase):
         if info.data and 'password' in info.data and v != info.data['password']:
             raise ValueError('Passwords do not match')
         return v
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -83,12 +83,12 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for user updates with optional fields."""
-    username: Optional[str] = Field(None, min_length=3, max_length=50)
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=255)
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    
+    username: str | None = Field(None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
+    is_superuser: bool | None = None
+
     @field_validator('username')
     @classmethod
     def validate_username(cls, v):
@@ -100,7 +100,7 @@ class UserUpdate(BaseModel):
                 raise ValueError('Username is reserved')
             return v.lower()
         return v
-    
+
     @field_validator('full_name')
     @classmethod
     def validate_full_name(cls, v):
@@ -119,7 +119,7 @@ class UserPasswordUpdate(BaseModel):
     current_password: str = Field(..., description="Current password for verification")
     new_password: str = Field(..., min_length=8, max_length=128, description="New strong password")
     confirm_new_password: str = Field(..., description="New password confirmation")
-    
+
     @field_validator('new_password')
     @classmethod
     def validate_password_strength(cls, v):
@@ -135,7 +135,7 @@ class UserPasswordUpdate(BaseModel):
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
             raise ValueError('Password must contain at least one special character')
         return v
-    
+
     @field_validator('confirm_new_password')
     @classmethod
     def validate_password_match(cls, v, info):
@@ -150,7 +150,7 @@ class UserResponse(UserBase):
     id: int = Field(..., description="Unique user ID")
     created_at: datetime = Field(..., description="User creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    
+
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
@@ -182,7 +182,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     """Schema for token data."""
-    username: Optional[str] = Field(None, description="Username from token")
+    username: str | None = Field(None, description="Username from token")
 
 
 class UserSearchParams(BaseModel):
@@ -191,7 +191,7 @@ class UserSearchParams(BaseModel):
     skip: int = Field(0, ge=0, description="Number of records to skip")
     limit: int = Field(100, ge=1, le=1000, description="Maximum records to return")
     active_only: bool = Field(False, description="Search only active users")
-    
+
     @field_validator('query')
     @classmethod
     def validate_query(cls, v):

@@ -1,7 +1,8 @@
 """OAuth2-compliant schemas for authentication."""
 
-from pydantic import BaseModel, EmailStr, Field
 from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 # OAuth2 Authorization Flow Schemas
@@ -15,7 +16,7 @@ class AuthorizationRequest(BaseModel):
     state: str = Field(..., description="CSRF protection state")
     code_challenge: str | None = Field(None, description="PKCE code challenge")
     code_challenge_method: Literal["S256"] | None = Field(None, description="PKCE method")
-    
+
     # Local auth fields (optional, only for provider="local")
     username: str | None = Field(None, description="Username for local auth")
     password: str | None = Field(None, description="Password for local auth")
@@ -44,7 +45,7 @@ class TokenRequest(BaseModel):
 class TokenResponse(BaseModel):
     """OAuth2-compliant token response."""
     access_token: str = Field(..., description="JWT access token")
-    token_type: Literal["Bearer"] = "Bearer" 
+    token_type: Literal["Bearer"] = "Bearer"
     expires_in: int = Field(..., description="Token lifetime in seconds")
     refresh_token: str | None = Field(None, description="Refresh token")
     scope: str | None = Field(None, description="Granted scopes")
@@ -73,7 +74,7 @@ class ErrorResponse(BaseModel):
 # Provider-Specific Schemas
 class GoogleUserInfo(BaseModel):
     """Google user information from OAuth."""
-    
+
     id: str = Field(..., description="Google user ID")
     email: EmailStr = Field(..., description="User email")
     verified_email: bool = Field(..., description="Email verification status")
@@ -86,7 +87,7 @@ class GoogleUserInfo(BaseModel):
 
 class GoogleTokenResponse(BaseModel):
     """Google token response."""
-    
+
     access_token: str = Field(..., description="Google access token")
     refresh_token: str | None = Field(None, description="Google refresh token")
     expires_in: int = Field(..., description="Token expiration in seconds")
@@ -97,7 +98,7 @@ class GoogleTokenResponse(BaseModel):
 
 class OAuthUserCreate(BaseModel):
     """Schema for creating OAuth users."""
-    
+
     email: EmailStr
     username: str
     full_name: str
@@ -112,14 +113,14 @@ class OAuthUserCreate(BaseModel):
 # Legacy schemas for backward compatibility
 class OAuthLoginRequest(BaseModel):
     """OAuth login request (legacy)."""
-    
+
     code: str = Field(..., description="Authorization code from OAuth provider")
     state: str | None = Field(None, description="State parameter for CSRF protection")
 
 
 class OAuthLoginResponse(BaseModel):
     """OAuth login response (legacy)."""
-    
+
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer", description="Token type")
     user: dict = Field(..., description="User information")
@@ -128,7 +129,7 @@ class OAuthLoginResponse(BaseModel):
 
 class GoogleAuthURL(BaseModel):
     """Google OAuth authorization URL response (legacy)."""
-    
+
     url: str = Field(..., description="Google OAuth authorization URL")
     state: str = Field(..., description="CSRF protection state")
 

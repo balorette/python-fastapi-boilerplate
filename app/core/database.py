@@ -1,8 +1,9 @@
 """Database configuration and session management."""
 
-from typing import Any, AsyncGenerator, Dict
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -19,8 +20,8 @@ if settings.is_sqlite:
     db_dir.mkdir(parents=True, exist_ok=True)
 
 # Configure engine settings based on database type
-engine_kwargs: Dict[str, Any] = {"echo": settings.DEBUG}
-async_engine_kwargs: Dict[str, Any] = {"echo": settings.DEBUG}
+engine_kwargs: dict[str, Any] = {"echo": settings.DEBUG}
+async_engine_kwargs: dict[str, Any] = {"echo": settings.DEBUG}
 
 if settings.is_sqlite:
     # SQLite specific settings with connection pooling

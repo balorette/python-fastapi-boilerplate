@@ -4,13 +4,13 @@ Test script for Google OAuth implementation
 """
 import asyncio
 import os
-from app.services.oauth import GoogleOAuthService
+from app.services.oauth import GoogleOAuthProvider
 from app.core.config import settings
 
 
 async def test_oauth_service():
     """Test basic OAuth service functionality"""
-    oauth_service = GoogleOAuthService()
+    oauth_service = GoogleOAuthProvider()
     
     print("🔍 Testing Google OAuth Service")
     print("=" * 50)

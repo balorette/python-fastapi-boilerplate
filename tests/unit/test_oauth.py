@@ -213,7 +213,7 @@ class TestOAuth2Endpoints:
             mock_repo.get_by_email.return_value = mock_user
             mock_repo_class.return_value = mock_repo
             
-            from app.api.v1.endpoints.oauth import authorize
+            from app.api.v1.endpoints.auth import authorize
             
             request = AuthorizationRequest(
                 provider="local",
@@ -252,7 +252,7 @@ class TestOAuth2Endpoints:
             mock_repo.get_by_email.return_value = mock_user
             mock_repo_class.return_value = mock_repo
             
-            from app.api.v1.endpoints.oauth import authorize
+            from app.api.v1.endpoints.auth import authorize
             
             request = AuthorizationRequest(
                 provider="local",
@@ -291,7 +291,7 @@ class TestOAuth2Endpoints:
             mock_repo.get.return_value = mock_user
             mock_repo_class.return_value = mock_repo
             
-            from app.api.v1.endpoints.oauth import token
+            from app.api.v1.endpoints.auth import token
             
             request = TokenRequest(
                 provider="local",
@@ -340,7 +340,7 @@ class TestOAuth2Endpoints:
             mock_repo.update.return_value = mock_user
             mock_repo_class.return_value = mock_repo
             
-            from app.api.v1.endpoints.oauth import local_login
+            from app.api.v1.endpoints.auth import local_login
             
             request = LocalLoginRequest(
                 email="user@example.com",
@@ -376,7 +376,7 @@ class TestOAuth2Endpoints:
             mock_repo.get.return_value = mock_user
             mock_repo_class.return_value = mock_repo
             
-            from app.api.v1.endpoints.oauth import refresh_token_endpoint
+            from app.api.v1.endpoints.auth import refresh_token_endpoint
             
             request = RefreshTokenRequest(refresh_token=refresh_token)
             
@@ -394,7 +394,7 @@ class TestOAuth2Endpoints:
     
     async def test_get_oauth_providers(self):
         """Test OAuth providers endpoint."""
-        from app.api.v1.endpoints.oauth import get_oauth_providers
+        from app.api.v1.endpoints.auth import get_oauth_providers
         
         result = await get_oauth_providers()
         

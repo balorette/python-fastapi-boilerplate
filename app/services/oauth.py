@@ -1,38 +1,39 @@
 """OAuth service for Google authentication."""
 
 import secrets
-from typing import Optional, Dict, Any
+from typing import Any
+from urllib.parse import urlencode
+
 import httpx
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
-from urllib.parse import urlencode
 
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ValidationError
-from app.schemas.oauth import GoogleUserInfo, GoogleTokenResponse
+from app.schemas.oauth import GoogleTokenResponse, GoogleUserInfo
 
 
 class GoogleOAuthService:
     """Service for handling Google OAuth authentication."""
-    
+
     def __init__(self):
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
-        
+
         # Google OAuth endpoints
         self.auth_uri = "https://accounts.google.com/o/oauth2/auth"
         self.token_uri = "https://oauth2.googleapis.com/token"
         self.userinfo_uri = "https://www.googleapis.com/oauth2/v2/userinfo"
-        
+
         # OAuth scopes
         self.scopes = [
             "openid",
-            "profile", 
+            "profile",
             "email"
         ]
-    
-    def generate_auth_url(self, state: Optional[str] = None) -> tuple[str, str]:
+
+    def generate_auth_url(self, state: str | None = None) -> tuple[str, str]:
         """Generate Google OAuth authorization URL with CSRF protection.
         
         Returns:
@@ -40,7 +41,7 @@ class GoogleOAuthService:
         """
         if not state:
             state = secrets.token_urlsafe(32)
-        
+
         params = {
             "response_type": "code",
             "client_id": self.client_id,
@@ -50,10 +51,10 @@ class GoogleOAuthService:
             "prompt": "consent",  # Force consent screen to get refresh token
             "state": state,
         }
-        
+
         auth_url = f"{self.auth_uri}?{urlencode(params)}"
         return auth_url, state
-    
+
     async def exchange_code_for_tokens(self, code: str) -> GoogleTokenResponse:
         """Exchange authorization code for access and refresh tokens.
         
@@ -73,24 +74,24 @@ class GoogleOAuthService:
             "redirect_uri": self.redirect_uri,
             "grant_type": "authorization_code",
         }
-        
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(self.token_uri, data=data)
                 response.raise_for_status()
                 token_data = response.json()
-            
+
             # Validate required fields
             if "access_token" not in token_data:
                 raise AuthenticationError("No access token received from Google")
-            
+
             return GoogleTokenResponse(**token_data)
-            
+
         except httpx.HTTPError as e:
             raise AuthenticationError(f"Failed to exchange code for tokens: {str(e)}")
         except Exception as e:
             raise AuthenticationError(f"Token exchange error: {str(e)}")
-    
+
     async def get_user_info(self, access_token: str) -> GoogleUserInfo:
         """Get user information from Google using access token.
         
@@ -104,27 +105,27 @@ class GoogleOAuthService:
             AuthenticationError: If user info retrieval fails
         """
         headers = {"Authorization": f"Bearer {access_token}"}
-        
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(self.userinfo_uri, headers=headers)
                 response.raise_for_status()
                 user_data = response.json()
-            
+
             # Validate required fields
             required_fields = ["id", "email", "name"]
             for field in required_fields:
                 if field not in user_data:
                     raise ValidationError(f"Missing required field: {field}")
-            
+
             return GoogleUserInfo(**user_data)
-            
+
         except httpx.HTTPError as e:
             raise AuthenticationError(f"Failed to get user info: {str(e)}")
         except Exception as e:
             raise AuthenticationError(f"User info error: {str(e)}")
-    
-    def verify_id_token(self, id_token_str: str) -> Dict[str, Any]:
+
+    def verify_id_token(self, id_token_str: str) -> dict[str, Any]:
         """Verify Google ID token and extract user information.
         
         Args:
@@ -142,18 +143,18 @@ class GoogleOAuthService:
             id_info = id_token.verify_oauth2_token(
                 id_token_str, request, self.client_id
             )
-            
+
             # Verify issuer
             if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise AuthenticationError("Invalid token issuer")
-            
+
             return id_info
-            
+
         except ValueError as e:
             raise AuthenticationError(f"Invalid ID token: {str(e)}")
         except Exception as e:
             raise AuthenticationError(f"Token verification error: {str(e)}")
-    
+
     async def refresh_access_token(self, refresh_token: str) -> GoogleTokenResponse:
         """Refresh Google access token using refresh token.
         
@@ -172,24 +173,24 @@ class GoogleOAuthService:
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
         }
-        
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(self.token_uri, data=data)
                 response.raise_for_status()
                 token_data = response.json()
-            
+
             # Add refresh token to response if not included
             if "refresh_token" not in token_data:
                 token_data["refresh_token"] = refresh_token
-            
+
             return GoogleTokenResponse(**token_data)
-            
+
         except httpx.HTTPError as e:
             raise AuthenticationError(f"Failed to refresh token: {str(e)}")
         except Exception as e:
             raise AuthenticationError(f"Token refresh error: {str(e)}")
-    
+
     def is_enabled(self) -> bool:
         """Check if Google OAuth is properly configured and enabled."""
         return (

@@ -8,10 +8,10 @@ Supports:
 - Frontend-friendly error responses
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,20 +20,17 @@ from app.core.database import get_async_db
 from app.core.security import (
     create_access_token,
     create_refresh_token,
-    verify_token,
     verify_password,
-    get_password_hash
+    verify_token,
 )
-from app.models.user import User
 from app.repositories.user import UserRepository
 from app.schemas.oauth import (
     AuthorizationRequest,
     AuthorizationResponse,
-    TokenRequest,
-    TokenResponse,
     LocalLoginRequest,
     RefreshTokenRequest,
-    ErrorResponse
+    TokenRequest,
+    TokenResponse,
 )
 
 router = APIRouter()
@@ -59,34 +56,34 @@ async def authorize(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Username and password required for local authorization"
                 )
-            
+
             user_repo = UserRepository(db)
             user = await user_repo.get_by_email(request.username)
-            
+
             if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid credentials"
                 )
-            
+
             # Generate authorization code (short-lived token)
             auth_code = create_access_token(
                 data={"sub": str(user.id), "email": user.email, "type": "auth_code"},
                 expires_delta_minutes=10  # Short-lived auth code
             )
-            
+
             return AuthorizationResponse(
                 authorization_code=auth_code,
                 state=request.state,
                 redirect_uri=request.redirect_uri
             )
-        
+
         else:
             # External OAuth provider - simplified implementation
             auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={request.client_id}&redirect_uri={request.redirect_uri}&response_type=code&scope={request.scope or 'openid email profile'}&state={request.state}"
             if request.code_challenge:
                 auth_url += f"&code_challenge={request.code_challenge}&code_challenge_method={request.code_challenge_method or 'S256'}"
-            
+
             return AuthorizationResponse(
                 authorization_url=auth_url,
                 authorization_code=None,
@@ -94,7 +91,7 @@ async def authorize(
                 redirect_uri=request.redirect_uri,
                 code_verifier=None
             )
-            
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -119,13 +116,13 @@ async def token(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unsupported grant type"
             )
-        
+
         if not request.code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Authorization code is required"
             )
-        
+
         if request.provider == "local":
             # Verify authorization code
             payload = verify_token(request.code)
@@ -134,23 +131,23 @@ async def token(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid authorization code"
                 )
-            
+
             user_id = payload.get("sub")
             if not user_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid token: missing user ID"
                 )
-            
+
             user_repo = UserRepository(db)
             user = await user_repo.get(int(user_id))
-            
+
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User not found"
                 )
-            
+
             # Create tokens
             access_token = create_access_token(
                 data={
@@ -160,9 +157,9 @@ async def token(
                     "provider": "local"
                 }
             )
-            
+
             refresh_token = create_refresh_token(user.id)
-            
+
             return TokenResponse(
                 access_token=access_token,
                 token_type="Bearer",
@@ -170,19 +167,19 @@ async def token(
                 refresh_token=refresh_token,
                 scope="openid email profile"
             )
-        
+
         else:
             # External OAuth provider - simplified implementation
             # In production, you would:
             # 1. Exchange code with actual provider
             # 2. Get user info from provider
             # 3. Create or update user in your database
-            
+
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="External OAuth providers not fully implemented yet"
             )
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -205,19 +202,19 @@ async def local_login(
     try:
         user_repo = UserRepository(db)
         user = await user_repo.get_by_email(request.email)
-        
+
         if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        
+
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is disabled"
             )
-        
+
         # Create tokens
         access_token = create_access_token(
             data={
@@ -227,12 +224,12 @@ async def local_login(
                 "provider": "local"
             }
         )
-        
+
         refresh_token = create_refresh_token(user.id)
-        
+
         # Update last login
-        await user_repo.update(user, {"last_login": datetime.now(timezone.utc)})
-        
+        await user_repo.update(user, {"last_login": datetime.now(UTC)})
+
         return TokenResponse(
             access_token=access_token,
             token_type="Bearer",
@@ -240,7 +237,7 @@ async def local_login(
             refresh_token=refresh_token,
             scope="openid email profile"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -266,23 +263,23 @@ async def refresh_token_endpoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid refresh token"
             )
-        
+
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid refresh token: missing user ID"
             )
-        
+
         user_repo = UserRepository(db)
         user = await user_repo.get(int(user_id))
-        
+
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found or inactive"
             )
-        
+
         # Create new access token
         access_token = create_access_token(
             data={
@@ -292,10 +289,10 @@ async def refresh_token_endpoint(
                 "provider": getattr(user, "oauth_provider", "local")
             }
         )
-        
+
         # Optionally create new refresh token (token rotation)
         new_refresh_token = create_refresh_token(user.id)
-        
+
         return TokenResponse(
             access_token=access_token,
             token_type="Bearer",
@@ -303,7 +300,7 @@ async def refresh_token_endpoint(
             refresh_token=new_refresh_token,
             scope="openid email profile"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -314,7 +311,7 @@ async def refresh_token_endpoint(
 
 
 @router.get("/providers")
-async def get_oauth_providers() -> Dict[str, Any]:
+async def get_oauth_providers() -> dict[str, Any]:
     """
     Get list of available OAuth providers and their configuration.
     """
@@ -359,15 +356,15 @@ async def oauth_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"OAuth authorization failed: {error}"
         )
-    
+
     # For SPA applications, we typically redirect back to frontend
     # with the authorization code, letting frontend handle token exchange
     frontend_url = "http://localhost:3000"  # In production, this should come from settings
     callback_url = f"{frontend_url}/auth/callback?code={code}&provider={provider}"
-    
+
     if state:
         callback_url += f"&state={state}"
-    
+
     return RedirectResponse(url=callback_url)
 
 
@@ -375,7 +372,7 @@ async def oauth_callback(
 async def revoke_token(
     token: str,
     db: AsyncSession = Depends(get_async_db)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Revoke an access or refresh token.
     
@@ -383,12 +380,12 @@ async def revoke_token(
     """
     try:
         payload = verify_token(token)
-        
+
         # In production, add token to blacklist/revocation list
         # For now, we'll just verify the token is valid
-        
+
         return {"message": "Token revoked successfully"}
-        
+
     except Exception:
         # Even if token is invalid, return success (OAuth2 spec)
         return {"message": "Token revoked successfully"}
