@@ -84,14 +84,14 @@
   - [ ] Document required Azure app registration steps
 
 #### **Implementation Tasks**
-- [ ] **Extend OAuth Service**
+- [ ] **Extend OAuth Provider Layer**
   ```python
-  # app/services/oauth.py
-  class EntraIDOAuthService:
-      async def get_authorization_url(self) -> tuple[str, str]
-      async def exchange_code_for_tokens(self, code: str) -> dict[str, Any]
-      async def validate_id_token(self, id_token: str) -> dict[str, Any]
-      async def get_user_info(self, access_token: str) -> dict[str, Any]
+  # app/services/oauth/entra.py
+  class EntraIDOAuthProvider(BaseOAuthProvider):
+      async def get_authorization_url(...): ...
+      async def exchange_code_for_tokens(...): ...
+      async def validate_id_token(...): ...
+      async def get_user_info(...): ...
   ```
 
 - [ ] **Add Configuration**
@@ -103,14 +103,14 @@
   ENTRA_REDIRECT_URI: str = Field(..., description="Entra redirect URI")
   ```
 
-- [ ] **Create OAuth Endpoints**
+- [ ] **Expose Provider Through Existing Endpoints**
   ```python
+  # app/services/oauth/factory.py
+  OAuthProviderFactory.register_provider("entra", EntraIDOAuthProvider)
+
   # app/api/v1/endpoints/auth.py
-  @router.get("/oauth/entra/authorize")
-  async def entra_authorize()
-  
-  @router.post("/oauth/entra/callback")  
-  async def entra_callback()
+  # POST /api/v1/auth/authorize {"provider": "entra", ...}
+  # POST /api/v1/auth/token {"provider": "entra", ...}
   ```
 
 - [ ] **Update Database Schema**

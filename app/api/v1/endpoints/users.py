@@ -28,6 +28,7 @@ async def get_users(
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
     user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Get paginated list of users."""
     try:
@@ -40,7 +41,9 @@ async def get_users(
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
-    user: UserCreate, user_service: UserService = Depends(get_user_service)
+    user: UserCreate,
+    user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Create a new user."""
     try:
@@ -54,7 +57,9 @@ async def create_user(
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
-    user_id: int, user_service: UserService = Depends(get_user_service)
+    user_id: int,
+    user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Get user by ID."""
     try:
@@ -69,6 +74,7 @@ async def update_user(
     user_id: int,
     user_update: UserUpdate,
     user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Update user by ID."""
     try:
@@ -84,7 +90,9 @@ async def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: int, user_service: UserService = Depends(get_user_service)
+    user_id: int,
+    user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> None:
     """Delete user by ID."""
     try:
@@ -99,6 +107,7 @@ async def search_users(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Search users by username or email."""
     try:
@@ -116,6 +125,7 @@ async def get_active_users(
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
     user_service: UserService = Depends(get_user_service),
+    _: User = Depends(get_current_active_user),
 ) -> Any:
     """Get paginated list of active users only."""
     try:

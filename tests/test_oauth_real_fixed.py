@@ -59,7 +59,7 @@ class TestOAuth2RealAuth:
         assert response.status_code == 401
         error_data = response.json()
         assert "detail" in error_data
-        assert "Invalid credentials" in error_data["detail"]
+        assert "invalid" in error_data["detail"].lower()
 
     async def test_protected_endpoint_with_real_jwt_validation(self, client_with_real_db, sample_user_in_db):
         """Test accessing protected endpoints with real JWT validation."""

@@ -116,11 +116,11 @@ Tooling:
 5. Client includes token in Authorization header
 
 #### OAuth2 Flow (with PKCE)
-1. Client requests `/auth/authorize` with provider
+1. Client requests `/api/v1/auth/authorize` with provider
 2. System generates state for CSRF protection
 3. User redirected to provider (e.g., Google)
-4. Provider redirects to `/auth/callback/{provider}` with code
-5. Client exchanges code at `/auth/token`
+4. Provider redirects to `/api/v1/auth/callback/{provider}` with code
+5. Client exchanges code at `/api/v1/auth/token`
 6. System validates and creates/links user by email
 7. System returns JWT tokens
 
@@ -152,7 +152,9 @@ class User:
   "nbf": 1234567890,
   "iss": "api.example.com",
   "aud": "api.example.com",
-  "token_type": "access_token"
+  "token_type": "access_token",
+  "provider": "local|google",
+  "new_user": false
 }
 ```
 

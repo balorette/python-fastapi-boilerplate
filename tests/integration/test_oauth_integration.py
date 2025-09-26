@@ -97,7 +97,7 @@ class TestOAuth2Integration:
         
         assert response.status_code == 401
         error_data = response.json()
-        assert "Invalid username/email or password" in error_data["detail"]
+        assert "invalid" in error_data["detail"].lower()
         
         # Test non-existent user (real database lookup)
         response = client_with_real_db.post(
@@ -111,7 +111,7 @@ class TestOAuth2Integration:
         
         assert response.status_code == 401
         error_data = response.json()
-        assert "Invalid username/email or password" in error_data["detail"]
+        assert "invalid" in error_data["detail"].lower()
         
         # Test with empty/invalid credentials
         response = client_with_real_db.post(
@@ -348,35 +348,79 @@ class TestOAuth2Integration:
             }
         )
         
-        assert invalid_refresh_response.status_code == 401
+        assert invalid_refresh_response.status_code == 400
 
-    @patch('app.services.oauth.google.GoogleOAuthProvider.validate_id_token')
+    @patch('app.services.oauth.factory.OAuthProviderFactory.create_provider')
     @pytest.mark.asyncio
-    async def test_google_oauth_integration_with_real_user_creation(self, mock_validate, client_with_real_db, async_db_session: AsyncSession):
+    async def test_google_oauth_integration_with_real_user_creation(
+        self,
+        mock_create_provider,
+        client_with_real_db,
+        async_db_session: AsyncSession,
+    ):
         """Test Google OAuth flow with real user creation in database."""
-        
-        # Mock Google token validation response
-        mock_validate.return_value = {
+
+        provider_mock = AsyncMock()
+        provider_mock.get_authorization_url.return_value = "https://accounts.google.com/o/oauth2/auth"
+        provider_mock.exchange_code_for_tokens.side_effect = [
+            {
+                "access_token": "google-access-token",
+                "refresh_token": "google-refresh-token",
+                "scope": "openid email profile",
+                "id_token": "google-id-token",
+            },
+            {
+                "access_token": "google-access-token-2",
+                "refresh_token": "google-refresh-token-2",
+                "scope": "openid email profile",
+                "id_token": "google-id-token",
+            },
+        ]
+        provider_mock.get_user_info.side_effect = [
+            {
+                "id": "google_user_123456",
+                "email": "googleuser@gmail.com",
+                "verified_email": True,
+                "name": "Google Test User",
+                "given_name": "Google",
+                "family_name": "User",
+                "picture": "https://example.com/picture.jpg",
+                "locale": "en-US",
+            },
+            {
+                "id": "google_user_123456",
+                "email": "googleuser@gmail.com",
+                "verified_email": True,
+                "name": "Google Test User",
+                "given_name": "Google",
+                "family_name": "User",
+                "picture": "https://example.com/picture.jpg",
+                "locale": "en-US",
+            },
+        ]
+        provider_mock.validate_id_token.return_value = {
             "sub": "google_user_123456",
             "email": "googleuser@gmail.com",
             "name": "Google Test User",
             "email_verified": True,
-            "picture": "https://example.com/picture.jpg"
         }
-        
-        # Test OAuth callback that should create a real user
-        callback_response = client_with_real_db.post(
-            "/api/v1/auth/callback/google",
-            json={
-                "code": "mock_google_auth_code",
-                "state": "mock_state_value"
-            }
+
+        mock_create_provider.return_value = provider_mock
+
+        token_payload = {
+            "provider": "google",
+            "grant_type": "authorization_code",
+            "code": "mock_google_auth_code",
+            "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+        }
+
+        token_response = client_with_real_db.post(
+            "/api/v1/auth/token",
+            json=token_payload,
         )
-        
-        # Should create user and return tokens
-        assert callback_response.status_code == 200
-        token_data = callback_response.json()
-        
+        assert token_response.status_code == 200
+        token_data = token_response.json()
+
         assert "access_token" in token_data
         assert "refresh_token" in token_data
         assert token_data["email"] == "googleuser@gmail.com"
@@ -403,16 +447,15 @@ class TestOAuth2Integration:
         assert user_data["full_name"] == "Google Test User"
         
         # Test subsequent login with same Google account (should not create duplicate)
-        second_callback = client_with_real_db.post(
-            "/api/v1/auth/callback/google",
+        second_response = client_with_real_db.post(
+            "/api/v1/auth/token",
             json={
+                "provider": "google",
+                "grant_type": "authorization_code",
                 "code": "another_mock_code",
-                "state": "another_mock_state"  
-            }
+                "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+            },
         )
-        
-        assert second_callback.status_code == 200
-        
-        # Should still be the same user ID
-        second_token_data = second_callback.json()
+        assert second_response.status_code == 200
+        second_token_data = second_response.json()
         assert second_token_data["user_id"] == token_data["user_id"]

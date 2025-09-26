@@ -208,7 +208,7 @@ class TestOAuth2Endpoints:
             is_active=True
         )
         
-        with patch('app.api.v1.endpoints.oauth.UserRepository') as mock_repo_class:
+        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo.get_by_email.return_value = mock_user
             mock_repo_class.return_value = mock_repo
@@ -247,7 +247,7 @@ class TestOAuth2Endpoints:
             is_active=True
         )
         
-        with patch('app.api.v1.endpoints.oauth.UserRepository') as mock_repo_class:
+        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo.get_by_email.return_value = mock_user
             mock_repo_class.return_value = mock_repo
@@ -286,7 +286,7 @@ class TestOAuth2Endpoints:
             is_active=True
         )
         
-        with patch('app.api.v1.endpoints.oauth.UserRepository') as mock_repo_class:
+        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo.get.return_value = mock_user
             mock_repo_class.return_value = mock_repo
@@ -334,7 +334,7 @@ class TestOAuth2Endpoints:
             is_active=True
         )
         
-        with patch('app.api.v1.endpoints.oauth.UserRepository') as mock_repo_class:
+        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo.get_by_email.return_value = mock_user
             mock_repo.update.return_value = mock_user
@@ -371,7 +371,7 @@ class TestOAuth2Endpoints:
             is_active=True
         )
         
-        with patch('app.api.v1.endpoints.oauth.UserRepository') as mock_repo_class:
+        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo.get.return_value = mock_user
             mock_repo_class.return_value = mock_repo

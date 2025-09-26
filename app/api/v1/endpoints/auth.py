@@ -67,7 +67,7 @@ async def authorize(
             if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid credentials"
+                    detail="Invalid username/email or password"
                 )
 
             # Generate authorization code (short-lived token)
@@ -310,7 +310,7 @@ async def local_login(
         if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
+                detail="Invalid username/email or password"
             )
 
         if not user.is_active:

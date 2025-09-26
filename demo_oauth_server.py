@@ -11,8 +11,9 @@ if __name__ == "__main__":
     print("🚀 Starting OAuth Demo Server")
     print("=" * 50)
     print("📋 Available endpoints:")
-    print("  • GET  /api/v1/auth/oauth/google/authorize")
-    print("  • POST /api/v1/auth/oauth/google/callback") 
+    print("  • POST /api/v1/auth/authorize")
+    print("  • GET  /api/v1/auth/callback/google")
+    print("  • POST /api/v1/auth/token")
     print("  • POST /api/v1/auth/login (existing)")
     print("  • POST /api/v1/auth/register (existing)")
     print("  • GET  /api/v1/auth/me (works with both tokens)")
@@ -22,8 +23,9 @@ if __name__ == "__main__":
     print("📖 Documentation at: http://localhost:8000/docs")
     print("\n💡 To test OAuth:")
     print("1. Go to http://localhost:8000/docs")
-    print("2. Try the /auth/oauth/google/authorize endpoint")
-    print("3. Set up your Google OAuth credentials first!")
+    print("2. Call POST /api/v1/auth/authorize with provider=google")
+    print("3. After Google redirect, exchange the code via POST /api/v1/auth/token")
+    print("4. Set up your Google OAuth credentials first!")
     print("=" * 50)
     
     uvicorn.run(

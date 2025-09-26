@@ -8,17 +8,17 @@ Your FastAPI application now has **complete Google OAuth integration** alongside
 
 ### 1. **Dual Authentication System**
 - **Local JWT Authentication**: Existing username/password system maintained
-- **Google OAuth**: New OAuth flow for Google users
-- **Unified Token Validation**: Both token types work seamlessly
+- **Google OAuth**: End-to-end Authorization Code + PKCE flow for Google users
+- **Unified Token Validation**: Both local JWT and Google ID tokens work seamlessly with protected endpoints
 
 ### 2. **Auto-linking Accounts**
 - Users are automatically linked by email address
-- Prevents duplicate accounts for the same email
-- Existing users can add Google OAuth to their account
+- Prevents duplicate accounts for the same identity
+- Existing local users can attach Google OAuth to their account
 
 ### 3. **OAuth-Only Google Users**
-- Google users don't need a password (hashed_password is optional)
-- Username is set to the user's email address
+- Google users don't need a password (`hashed_password` is optional)
+- Username defaults to the user's email address
 - Full profile information from Google is stored
 
 ### 4. **Refresh Token Support**
@@ -30,18 +30,18 @@ Your FastAPI application now has **complete Google OAuth integration** alongside
 - CSRF protection using session state
 - Google ID token validation using Google's public keys
 - Email verification status tracked
-- Secure session middleware
+- Hardened session middleware and strict error handling
 
 ## 🏗️ Architecture Overview
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   FastAPI       │    │   Database      │
-│                 │    │                 │    │                 │
-│ Local Login     │◄──►│ JWT Auth        │◄──►│ User (local)    │
-│ Google Login    │◄──►│ OAuth Service   │◄──►│ User (oauth)    │
-│                 │    │ Unified Auth    │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌────────────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   FastAPI Application  │    │     Database    │
+│                 │    │                        │    │                 │
+│ Local Login     │◄──►│ Local Auth (services)  │◄──►│ User (local)    │
+│ Google Login    │◄──►│ OAuth Provider Factory │◄──►│ User (oauth)    │
+│                 │    │ Unified Auth Layer     │    │                 │
+└─────────────────┘    └────────────────────────┘    └─────────────────┘
                               │
                               ▼
                     ┌─────────────────┐
@@ -54,19 +54,21 @@ Your FastAPI application now has **complete Google OAuth integration** alongside
 ## 📁 Files Modified/Created
 
 ### Core OAuth Implementation
-- **`app/services/oauth.py`** - Google OAuth service
-- **`app/schemas/oauth.py`** - OAuth Pydantic schemas
-- **`app/models/user.py`** - Extended User model with OAuth fields
+- **`app/services/oauth/google.py`** – Google OAuth provider implementation
+- **`app/services/oauth/factory.py`** – Provider registry/factory
+- **`app/services/oauth/base.py`** – Base provider contract
+- **`app/schemas/oauth.py`** – OAuth request/response schemas
+- **`app/models/user.py`** – Extended User model with OAuth fields
 
 ### API Integration
-- **`app/api/v1/endpoints/auth.py`** - OAuth endpoints
-- **`app/api/dependencies.py`** - Unified authentication
-- **`main.py`** - Session middleware for CSRF
+- **`app/api/v1/endpoints/auth.py`** – OAuth endpoints (authorize/token/refresh)
+- **`app/api/dependencies.py`** – Unified authentication dependency
+- **`main.py`** – Session middleware for CSRF protection
 
 ### Configuration
-- **`pyproject.toml`** - Google OAuth dependencies
-- **`alembic.ini`** - Fixed migration configuration
-- **`app/core/config.py`** - OAuth environment variables
+- **`app/core/config.py`** – OAuth environment variables
+- **`alembic/versions/f84e336e4ffb_...`** – Database migration with OAuth columns
+- **`requirements.txt` / `scripts/lint.sh`** – Tooling aligned with Ruff + Python 3.12
 
 ## 🔧 Environment Setup
 
@@ -76,7 +78,7 @@ Add these environment variables to your `.env` file:
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback/google
 
 # Session Configuration (for CSRF protection)
 SECRET_KEY=your-existing-secret-key
@@ -86,61 +88,77 @@ SECRET_KEY=your-existing-secret-key
 
 ### New OAuth Endpoints
 
-#### 1. **GET `/api/v1/auth/oauth/google/authorize`**
+#### 1. **POST `/api/v1/auth/authorize`**
 ```http
-GET /api/v1/auth/oauth/google/authorize
+POST /api/v1/auth/authorize
+Content-Type: application/json
+
+{
+  "provider": "google",
+  "client_id": "your-google-client-id",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+  "state": "csrf-protection-token",
+  "code_challenge": "optional_pkce_challenge"
+}
 ```
 **Response:**
 ```json
 {
-  "auth_url": "https://accounts.google.com/o/oauth2/auth?...",
-  "state": "csrf-protection-token"
+  "authorization_url": "https://accounts.google.com/o/oauth2/auth?...",
+  "state": "csrf-protection-token",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google"
 }
 ```
 
-#### 2. **POST `/api/v1/auth/oauth/google/callback`**
+#### 2. **GET `/api/v1/auth/callback/google`**
 ```http
-POST /api/v1/auth/oauth/google/callback
+GET /api/v1/auth/callback/google?code=authorization-code&state=csrf-token
+```
+**Response:** Redirect (302) to your frontend with the authorization code.
+
+#### 3. **POST `/api/v1/auth/token`**
+```http
+POST /api/v1/auth/token
 Content-Type: application/json
 
 {
-  "code": "authorization-code-from-google",
-  "state": "csrf-protection-token"
+  "provider": "google",
+  "grant_type": "authorization_code",
+  "code": "authorization-code",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+  "code_verifier": "optional_pkce_verifier"
 }
 ```
 **Response:**
 ```json
 {
   "access_token": "jwt-token",
+  "refresh_token": "refresh-token",
   "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "email": "user@gmail.com",
-    "username": "user@gmail.com",
-    "full_name": "User Name",
-    "is_active": true,
-    "oauth_provider": "google"
-  }
+  "expires_in": 1800,
+  "scope": "openid email profile",
+  "user_id": 1,
+  "email": "user@gmail.com",
+  "username": "user@gmail.com",
+  "is_new_user": false
 }
 ```
 
 ### Existing Endpoints (Still Work)
-- **POST `/api/v1/auth/login`** - Local username/password login
-- **POST `/api/v1/auth/register`** - Local user registration
-- **GET `/api/v1/auth/me`** - Get current user (works with both token types)
+- **POST `/api/v1/auth/login`** – Local username/password login
+- **POST `/api/v1/auth/refresh`** – Refresh tokens for local/OAuth users
+- **GET `/api/v1/auth/providers`** – Enumerate available providers
+- **GET `/api/v1/users/me`** – Works with both token types
 
 ## 🗄️ Database Schema Changes
 
-The `User` model now includes these OAuth fields:
+The `users` table includes new OAuth columns and relaxed password requirement:
 
 ```sql
--- New OAuth fields added to users table
 ALTER TABLE users ADD COLUMN oauth_provider VARCHAR(50);
 ALTER TABLE users ADD COLUMN oauth_id VARCHAR(255);
 ALTER TABLE users ADD COLUMN oauth_email_verified BOOLEAN;
 ALTER TABLE users ADD COLUMN oauth_refresh_token TEXT;
-
--- hashed_password is now optional for OAuth users
 ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
 ```
 
@@ -148,66 +166,71 @@ ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
 
 ### 1. **Authorization Request**
 ```python
-# Frontend redirects user to:
-GET /api/v1/auth/oauth/google/authorize
-# Returns auth_url and state for CSRF protection
+# Frontend requests an authorization URL from the backend
+response = await fetch('/api/v1/auth/authorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        provider: 'google',
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google',
+        state: crypto.randomUUID(),
+        code_challenge: pkceChallenge
+    })
+})
 ```
 
 ### 2. **User Authorizes with Google**
 ```
-User goes to Google, authorizes your app
-Google redirects back with authorization code
+User visits Google's consent screen, approves the app, and is redirected back with code + state.
 ```
 
 ### 3. **Token Exchange**
 ```python
-# Frontend sends code to:
-POST /api/v1/auth/oauth/google/callback
-{
-    "code": "auth_code_from_google",
-    "state": "csrf_token"
-}
+const tokenResponse = await fetch('/api/v1/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        provider: 'google',
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google',
+        code_verifier: pkceVerifier
+    })
+});
 ```
 
 ### 4. **User Creation/Login**
 ```python
-# Backend:
-# 1. Exchanges code for Google tokens
-# 2. Gets user info from Google
-# 3. Creates/updates user in database
-# 4. Returns JWT token for your app
+# Backend steps (summarised)
+# 1. Exchange code for Google tokens
+# 2. Fetch user info from Google APIs
+# 3. Create or update user via UserService + repository
+# 4. Return JWT access/refresh tokens for your app
 ```
 
 ## 🛡️ Security Features
 
-### CSRF Protection
 - State parameter prevents CSRF attacks
-- Session middleware manages state tokens
-- State validation on callback
-
-### Token Validation
-- Google ID tokens verified using Google's public keys
-- JWT tokens validated using your secret key
-- Proper token expiration handling
-
-### Email Verification
-- Google's email verification status tracked
-- Only verified Google emails allowed (configurable)
+- Session middleware manages PKCE/CSRF state
+- Google ID tokens validated against provider public keys
+- JWT tokens include issuer/audience/token_type guards
+- Email verification status persisted for policy enforcement
 
 ## 🧪 Testing
 
 The implementation includes a comprehensive test suite:
 
 ```bash
-# Run OAuth tests
+# Run OAuth-focused tests
 python test_oauth.py
+pytest -k oauth
 ```
 
 Tests cover:
-- OAuth service functionality
-- Database schema changes  
-- URL generation and validation
-- Configuration verification
+- Authorization URL generation & PKCE handling
+- Token exchange and user provisioning
+- Unified authentication dependency (JWT + Google ID tokens)
+- Configuration and migration validation
 
 ## 🎯 Usage Examples
 
@@ -215,84 +238,85 @@ Tests cover:
 
 ```javascript
 // 1. Start OAuth flow
-const response = await fetch('/api/v1/auth/oauth/google/authorize');
-const { auth_url, state } = await response.json();
+const response = await fetch('/api/v1/auth/authorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        provider: 'google',
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google',
+        state: crypto.randomUUID()
+    })
+});
+const { authorization_url: authUrl, state } = await response.json();
 
-// Store state for CSRF protection
 sessionStorage.setItem('oauth_state', state);
+window.location.href = authUrl;
 
-// Redirect user to Google
-window.location.href = auth_url;
+// 2. Handle callback
+const params = new URLSearchParams(window.location.search);
+const code = params.get('code');
+const returnedState = params.get('state');
 
-// 2. Handle callback (in your callback page)
-const urlParams = new URLSearchParams(window.location.search);
-const code = urlParams.get('code');
-const state = urlParams.get('state');
-
-// Verify state matches
-const storedState = sessionStorage.getItem('oauth_state');
-if (state !== storedState) {
+if (returnedState !== sessionStorage.getItem('oauth_state')) {
     throw new Error('CSRF token mismatch');
 }
 
-// Exchange code for token
-const tokenResponse = await fetch('/api/v1/auth/oauth/google/callback', {
+// 3. Exchange code for tokens
+const tokenResponse = await fetch('/api/v1/auth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, state })
+    body: JSON.stringify({
+        provider: 'google',
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google'
+    })
 });
 
-const { access_token, user } = await tokenResponse.json();
-
-// Store token and user info
+const { access_token, refresh_token } = await tokenResponse.json();
 localStorage.setItem('access_token', access_token);
-localStorage.setItem('user', JSON.stringify(user));
+localStorage.setItem('refresh_token', refresh_token);
 ```
 
 ### Using Protected Endpoints
 
 ```javascript
-// Both local JWT and Google tokens work the same way
-const response = await fetch('/api/v1/auth/me', {
+const response = await fetch('/api/v1/users/me', {
     headers: {
-        'Authorization': `Bearer ${access_token}`
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`
     }
 });
-
 const user = await response.json();
 ```
 
 ## 🚀 Deployment Checklist
 
-- [ ] Set up Google OAuth App in Google Cloud Console
-- [ ] Configure redirect URIs in Google Console
-- [ ] Set environment variables in production
-- [ ] Run database migrations
-- [ ] Test OAuth flow end-to-end
-- [ ] Update frontend to use OAuth endpoints
-- [ ] Configure HTTPS for production (required by Google)
+1. Create Google OAuth Client ID in Google Cloud Console
+2. Configure redirect URIs (local + production)
+3. Set environment variables in `.env`
+4. Run Alembic migrations (`alembic upgrade head`)
+5. Test the OAuth flow end-to-end
+6. Update frontend integration to use new endpoints
+7. Enable HTTPS in production (required by Google)
 
 ## 🔧 Google Cloud Console Setup
 
-1. **Create OAuth 2.0 Client ID**:
+1. **Create OAuth 2.0 Client ID**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable Google+ API
-   - Create OAuth 2.0 credentials
-   - Add your redirect URI
+   - Enable the "Google People API"
+   - Create OAuth credentials with the correct redirect URIs
 
-2. **Configure Redirect URIs**:
-   - Development: `http://localhost:8000/api/v1/auth/oauth/google/callback`
-   - Production: `https://yourdomain.com/api/v1/auth/oauth/google/callback`
+2. **Configure Redirect URIs**
+   - Development: `http://localhost:8000/api/v1/auth/callback/google`
+   - Production: `https://yourdomain.com/api/v1/auth/callback/google`
 
 ## 📚 Next Steps
 
-1. **Set up Google OAuth credentials** in Google Cloud Console
-2. **Update your frontend** to use the new OAuth endpoints  
-3. **Test the complete flow** with real Google accounts
-4. **Deploy and verify** in your production environment
-5. **Add user management** features for OAuth users
-6. **Consider adding other OAuth providers** (GitHub, Microsoft, etc.)
+1. Add additional OAuth providers through `OAuthProviderFactory.register_provider`
+2. Implement rate limiting for `/api/v1/auth/authorize` and `/token`
+3. Expand monitoring/metrics for OAuth success/failure rates
+4. Harden secrets management (Key Vault/Secrets Manager integration)
 
 ## 🎉 Success!
 
-Your FastAPI application now supports both local authentication and Google OAuth with automatic account linking. Users can sign in with either method, and the system will handle everything seamlessly!
+Your FastAPI application now supports both local authentication and Google OAuth with automatic account linking and a clean provider abstraction. Downstream projects can register new providers without touching the core API layer.

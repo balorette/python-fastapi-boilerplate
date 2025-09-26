@@ -90,13 +90,13 @@ class TestUserServiceIntegration:
         service = UserService(async_db_session)
         
         # Should succeed with correct password
-        authenticated_user = await service.authenticate_user("testuser", "TestPass123!")
+        authenticated_user = await service.authenticate_user(sample_user_in_db.username, "TestPass123!")
         assert authenticated_user.id == sample_user_in_db.id
         assert authenticated_user.email == sample_user_in_db.email
         
         # Should fail with wrong password
         with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
-            await service.authenticate_user("testuser", "WrongPassword123!")
+            await service.authenticate_user(sample_user_in_db.username, "WrongPassword123!")
             
         # Should fail with non-existent user
         with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
@@ -168,10 +168,10 @@ class TestUserServiceIntegration:
         
         # Verify old password no longer works
         with pytest.raises(AuthenticationError):
-            await service.authenticate_user("testuser", "TestPass123!")
+            await service.authenticate_user(sample_user_in_db.username, "TestPass123!")
             
         # Verify new password works
-        authenticated_user = await service.authenticate_user("testuser", "NewTestPass456!")
+        authenticated_user = await service.authenticate_user(sample_user_in_db.username, "NewTestPass456!")
         assert authenticated_user.id == sample_user_in_db.id
         
         # Test wrong current password
