@@ -164,7 +164,7 @@ async def auth_headers(client_with_db, admin_user):
     
     # First try the local login endpoint
     login_response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": admin_email,
             "password": "AdminPass123!",

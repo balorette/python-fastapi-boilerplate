@@ -54,7 +54,8 @@ Your FastAPI application now has **complete Google OAuth integration** alongside
 ## 📁 Files Modified/Created
 
 ### Core OAuth Implementation
-- **`app/services/oauth.py`** - Google OAuth service
+- **`app/services/oauth/google.py`** - Google OAuth provider implementation
+- **`app/services/oauth/factory.py`** - Provider factory/registry
 - **`app/schemas/oauth.py`** - OAuth Pydantic schemas
 - **`app/models/user.py`** - Extended User model with OAuth fields
 
@@ -76,7 +77,7 @@ Add these environment variables to your `.env` file:
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback/google
 
 # Session Configuration (for CSRF protection)
 SECRET_KEY=your-existing-secret-key
@@ -86,41 +87,59 @@ SECRET_KEY=your-existing-secret-key
 
 ### New OAuth Endpoints
 
-#### 1. **GET `/api/v1/auth/oauth/google/authorize`**
+#### 1. **POST `/api/v1/auth/authorize`**
 ```http
-GET /api/v1/auth/oauth/google/authorize
+POST /api/v1/auth/authorize
+Content-Type: application/json
+
+{
+  "provider": "google",
+  "client_id": "your-google-client-id",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+  "state": "csrf-protection-token",
+  "code_challenge": "optional-pkce-challenge"
+}
 ```
 **Response:**
 ```json
 {
-  "auth_url": "https://accounts.google.com/o/oauth2/auth?...",
-  "state": "csrf-protection-token"
+  "authorization_url": "https://accounts.google.com/o/oauth2/auth?...",
+  "state": "csrf-protection-token",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google"
 }
 ```
 
-#### 2. **POST `/api/v1/auth/oauth/google/callback`**
+#### 2. **GET `/api/v1/auth/callback/google`**
 ```http
-POST /api/v1/auth/oauth/google/callback
+GET /api/v1/auth/callback/google?code=authorization-code&state=csrf-token
+```
+**Response:** Redirect (302) back to your frontend with the authorization code.
+
+#### 3. **POST `/api/v1/auth/token`**
+```http
+POST /api/v1/auth/token
 Content-Type: application/json
 
 {
-  "code": "authorization-code-from-google",
-  "state": "csrf-protection-token"
+  "provider": "google",
+  "grant_type": "authorization_code",
+  "code": "authorization-code",
+  "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+  "code_verifier": "optional-pkce-verifier"
 }
 ```
 **Response:**
 ```json
 {
   "access_token": "jwt-token",
+  "refresh_token": "refresh-token",
   "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "email": "user@gmail.com",
-    "username": "user@gmail.com",
-    "full_name": "User Name",
-    "is_active": true,
-    "oauth_provider": "google"
-  }
+  "expires_in": 1800,
+  "scope": "openid email profile",
+  "user_id": 1,
+  "email": "user@gmail.com",
+  "username": "user@gmail.com",
+  "is_new_user": false
 }
 ```
 
@@ -148,9 +167,15 @@ ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
 
 ### 1. **Authorization Request**
 ```python
-# Frontend redirects user to:
-GET /api/v1/auth/oauth/google/authorize
-# Returns auth_url and state for CSRF protection
+# Frontend requests authorization URL from backend:
+POST /api/v1/auth/authorize
+{
+    "provider": "google",
+    "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+    "state": "csrf_token",
+    "code_challenge": "optional_pkce_value"
+}
+# Response includes authorization_url and state for CSRF protection
 ```
 
 ### 2. **User Authorizes with Google**
@@ -162,10 +187,13 @@ Google redirects back with authorization code
 ### 3. **Token Exchange**
 ```python
 # Frontend sends code to:
-POST /api/v1/auth/oauth/google/callback
+POST /api/v1/auth/token
 {
+    "provider": "google",
+    "grant_type": "authorization_code",
     "code": "auth_code_from_google",
-    "state": "csrf_token"
+    "redirect_uri": "http://localhost:8000/api/v1/auth/callback/google",
+    "code_verifier": "optional_pkce_verifier"
 }
 ```
 
@@ -215,14 +243,22 @@ Tests cover:
 
 ```javascript
 // 1. Start OAuth flow
-const response = await fetch('/api/v1/auth/oauth/google/authorize');
-const { auth_url, state } = await response.json();
+const response = await fetch('/api/v1/auth/authorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        provider: 'google',
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google',
+        state: crypto.randomUUID()
+    })
+});
+const { authorization_url: authUrl, state } = await response.json();
 
 // Store state for CSRF protection
 sessionStorage.setItem('oauth_state', state);
 
 // Redirect user to Google
-window.location.href = auth_url;
+window.location.href = authUrl;
 
 // 2. Handle callback (in your callback page)
 const urlParams = new URLSearchParams(window.location.search);
@@ -236,10 +272,15 @@ if (state !== storedState) {
 }
 
 // Exchange code for token
-const tokenResponse = await fetch('/api/v1/auth/oauth/google/callback', {
+const tokenResponse = await fetch('/api/v1/auth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, state })
+    body: JSON.stringify({
+        provider: 'google',
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: 'http://localhost:8000/api/v1/auth/callback/google'
+    })
 });
 
 const { access_token, user } = await tokenResponse.json();
@@ -281,8 +322,8 @@ const user = await response.json();
    - Add your redirect URI
 
 2. **Configure Redirect URIs**:
-   - Development: `http://localhost:8000/api/v1/auth/oauth/google/callback`
-   - Production: `https://yourdomain.com/api/v1/auth/oauth/google/callback`
+   - Development: `http://localhost:8000/api/v1/auth/callback/google`
+   - Production: `https://yourdomain.com/api/v1/auth/callback/google`
 
 ## 📚 Next Steps
 

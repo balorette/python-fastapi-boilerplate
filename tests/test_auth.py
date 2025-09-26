@@ -55,7 +55,7 @@ async def auth_admin_user(async_db_session: AsyncSession):
 def test_login_success(client_with_db: TestClient, auth_admin_user):
     """Test successful login with OAuth2 endpoint."""
     response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": auth_admin_user.email, 
             "password": "Admin123!",
@@ -71,7 +71,7 @@ def test_login_success(client_with_db: TestClient, auth_admin_user):
 def test_login_with_email(client_with_db: TestClient, auth_test_user):
     """Test login using email instead of username with OAuth2."""
     response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": auth_test_user.email,
             "password": "TestPass123!",
@@ -87,7 +87,7 @@ def test_login_with_email(client_with_db: TestClient, auth_test_user):
 def test_login_invalid_credentials(client_with_db: TestClient):
     """Test login with invalid credentials using OAuth2."""
     response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": "nonexistent@example.com",
             "password": "WrongPass123!",
@@ -118,7 +118,7 @@ async def test_login_inactive_user(client_with_db: TestClient, async_db_session:
     await async_db_session.commit()
     
     response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": user.email,
             "password": "InactivePass123!",
@@ -132,7 +132,7 @@ def test_logout(client_with_db: TestClient, auth_admin_user):
     """Test token revocation (logout) with OAuth2."""
     # First get a token
     login_response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": auth_admin_user.email,
             "password": "Admin123!",
@@ -144,7 +144,7 @@ def test_logout(client_with_db: TestClient, auth_admin_user):
         token = login_response.json()["access_token"]
         # Try to revoke the token (if the endpoint exists)
         response = client_with_db.post(
-            "/api/v1/oauth/revoke",
+            "/api/v1/auth/revoke",
             params={"token": token}
         )
         # Accept either 200 (success) or 404 (endpoint not implemented yet)
@@ -199,7 +199,7 @@ def test_token_validation_flow(client_with_db: TestClient, auth_test_user):
     """Test complete token validation flow."""
     # 1. Login and get token via OAuth2
     login_response = client_with_db.post(
-        "/api/v1/oauth/login",
+        "/api/v1/auth/login",
         json={
             "email": auth_test_user.email,
             "password": "TestPass123!",

@@ -30,7 +30,7 @@
    # Google OAuth Configuration (required for OAuth features)
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret
-   GOOGLE_REDIRECT_URI=https://yourdomain.com/api/v1/auth/oauth/google/callback
+   GOOGLE_REDIRECT_URI=https://yourdomain.com/api/v1/auth/callback/google
    ```
 
 ### Docker Deployment

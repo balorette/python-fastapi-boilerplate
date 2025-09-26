@@ -53,7 +53,7 @@ class TestOAuth2JWTValidation:
 
             # Test login endpoint
             response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",
@@ -91,7 +91,7 @@ class TestOAuth2JWTValidation:
             mock_get_by_email.return_value = None
 
             response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "WrongPassword123!",
@@ -121,7 +121,7 @@ class TestOAuth2JWTValidation:
             mock_get_by_email.return_value = user_obj
 
             response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",  # Correct password but hash won't match
@@ -148,7 +148,7 @@ class TestOAuth2JWTValidation:
             mock_get_by_email.return_value = inactive_user
 
             response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",
@@ -305,7 +305,7 @@ class TestOAuth2JWTValidation:
 
         # Missing email
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "password": "TestPass123!",
                 "grant_type": "password"
@@ -315,7 +315,7 @@ class TestOAuth2JWTValidation:
 
         # Missing password  
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "grant_type": "password"
@@ -325,7 +325,7 @@ class TestOAuth2JWTValidation:
 
         # Invalid email format
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "not-an-email",
                 "password": "TestPass123!",
@@ -336,7 +336,7 @@ class TestOAuth2JWTValidation:
 
         # Invalid grant type
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPass123!",

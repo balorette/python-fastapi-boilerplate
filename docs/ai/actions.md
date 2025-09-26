@@ -4,6 +4,25 @@
 **Created**: 2025-01-25  
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-01-26 - OAuth Provider Implementation & Tooling Alignment
+**Context**: API endpoints and documentation still referenced legacy `/api/v1/oauth/*` paths and a deprecated `GoogleOAuthService`, leaving the Google flow unimplemented while tests/docs expected it. Tooling scripts also conflicted with the documented Ruff-first strategy, and the initial Alembic migration would drop the `users` table.
+
+**Decision**: Standardize the authentication namespace under `/api/v1/auth`, fully wire Google OAuth through the provider/factory pattern, regenerate the initial Alembic migration to create tables instead of dropping them, and align tooling (requirements, lint script, Dockerfile) with the Ruff + Python 3.12 baseline.
+
+**Rationale**: The base template must be "clone-and-go". Completing the provider integration and returning consistent token payloads ensures downstream projects can authenticate immediately. Regenerating the migration removes a destructive default, and consolidating tooling avoids conflicting instructions.
+
+**Impact**:
+- Updated API logic (`app/api/v1/endpoints/auth.py`, `app/api/dependencies.py`) to use `OAuthProviderFactory`, exchange Google tokens, and return enriched `TokenResponse` data.
+- Removed `app/services/oauth.py`, relying on `app/services/oauth/google.py` via the factory; adjusted scripts (`scripts/migrate-oauth.sh`), docs, and sample utilities to the new pattern.
+- Rewrote Alembic revision `f84e336e4ffb` to create the `users` table with OAuth columns instead of dropping it.
+- Replaced legacy linting stack with Ruff in `requirements.txt` and `scripts/lint.sh`; bumped Docker base image to Python 3.12.
+- Updated documentation (README, docs/features/OAUTH_IMPLEMENTATION.md, docs/ai/todo.md) and tests to reference `/api/v1/auth/*` routes and the provider workflow.
+
+**Next Steps**:
+- Patch pre-commit/CI configs to consume Ruff.
+- Continue triaging the failing pytest suite, especially fixtures patching non-existent modules.
+- Expand automated tests for the external provider branch now that it returns live tokens.
+
 ## 2025-01-25 - Project Assessment and Documentation Creation
 
 ### Context

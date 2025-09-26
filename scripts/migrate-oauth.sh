@@ -42,7 +42,7 @@ if [ -f ".env" ]; then
         echo "# Google OAuth Configuration" >> .env
         echo "GOOGLE_CLIENT_ID=your-google-client-id" >> .env
         echo "GOOGLE_CLIENT_SECRET=your-google-client-secret" >> .env
-        echo "GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback" >> .env
+        echo "GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback/google" >> .env
         echo "✅ Added OAuth environment variables to .env"
         echo "⚠️  Please update .env with your actual Google OAuth credentials"
     else
@@ -72,16 +72,28 @@ fi
 
 # Test OAuth service
 echo "🧪 Testing OAuth integration..."
-python -c "
+python3 - <<'PY'
+import asyncio
+
 try:
-    from app.services.oauth import GoogleOAuthService
-    oauth_service = GoogleOAuthService()
-    auth_url, state = oauth_service.generate_auth_url('test-migration')
-    print('✅ OAuth service working correctly')
+    from app.services.oauth import OAuthProviderFactory
+
+    provider = OAuthProviderFactory.create_provider("google")
+
+    async def _verify() -> None:
+        url = await provider.get_authorization_url(
+            redirect_uri="http://localhost:8000/api/v1/auth/callback/google",
+            state="test-migration"
+        )
+        if not isinstance(url, str) or "accounts.google.com" not in url:
+            raise RuntimeError("Authorization URL unexpected: %s" % url)
+
+    asyncio.run(_verify())
+    print("✅ OAuth provider factory working correctly")
 except Exception as e:
-    print(f'❌ OAuth service test failed: {e}')
-    exit(1)
-"
+    print(f"❌ OAuth provider test failed: {e}")
+    raise SystemExit(1)
+PY
 
 echo ""
 echo "=" * 50
@@ -91,13 +103,14 @@ echo "📋 Next Steps:"
 echo "1. Set up Google OAuth in Google Cloud Console:"
 echo "   - Create OAuth 2.0 Client ID"
 echo "   - Enable Google+ API"
-echo "   - Add redirect URI: http://localhost:8000/api/v1/auth/oauth/google/callback"
+echo "   - Add redirect URI: http://localhost:8000/api/v1/auth/callback/google"
 echo ""
 echo "2. Update your .env file with actual Google OAuth credentials"
 echo ""
 echo "3. Test the OAuth endpoints:"
-echo "   - GET  /api/v1/auth/oauth/google/authorize"
-echo "   - POST /api/v1/auth/oauth/google/callback"
+echo "   - POST /api/v1/auth/authorize"
+echo "   - GET  /api/v1/auth/callback/google"
+echo "   - POST /api/v1/auth/token"
 echo ""
 echo "4. View documentation:"
 echo "   - OAUTH_IMPLEMENTATION.md - Complete OAuth guide"
