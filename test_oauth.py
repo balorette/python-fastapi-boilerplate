@@ -18,21 +18,12 @@ async def test_oauth_service():
     # Test auth URL generation
     print("1. Testing auth URL generation...")
     try:
-        auth_result = oauth_service.generate_auth_url("test-state-123")
-        
-        # Handle tuple return (URL, state)
-        if isinstance(auth_result, tuple):
-            auth_url, returned_state = auth_result
-            print(f"✅ Auth URL generated successfully")
-            print(f"🔗 URL: {auth_url[:100]}...")
-            print(f"🔐 State: {returned_state}")
-            
-            # Verify state matches
-            assert returned_state == "test-state-123", f"Expected state 'test-state-123', got '{returned_state}'"
-        else:
-            auth_url = auth_result
-            print(f"✅ Auth URL generated successfully")
-            print(f"🔗 URL: {auth_url[:100]}...")
+        auth_url = await oauth_service.get_authorization_url(
+            redirect_uri=settings.GOOGLE_REDIRECT_URI or "http://localhost:8000/api/v1/auth/callback/google",
+            state="test-state-123"
+        )
+        print("✅ Auth URL generated successfully")
+        print(f"🔗 URL: {auth_url[:100]}...")
         
         # Verify URL contains required parameters
         assert "client_id" in auth_url

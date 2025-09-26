@@ -18,7 +18,7 @@ class TestOAuth2Integration:
         
         # Step 1: Login with real credentials stored in database
         login_response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": sample_user_in_db.email,  # Real email from database
                 "password": "TestPass123!",  # Real password that matches hashed version
@@ -62,7 +62,7 @@ class TestOAuth2Integration:
         
         # Step 4: Test token refresh with real refresh token
         refresh_response = client_with_real_db.post(
-            "/api/v1/oauth/refresh",
+            "/api/v1/auth/refresh",
             json={
                 "grant_type": "refresh_token",
                 "refresh_token": token_data["refresh_token"]
@@ -87,7 +87,7 @@ class TestOAuth2Integration:
         
         # Test wrong password with real user
         response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": sample_user_in_db.email,
                 "password": "WrongPassword123!",  # Wrong password
@@ -101,7 +101,7 @@ class TestOAuth2Integration:
         
         # Test non-existent user (real database lookup)
         response = client_with_real_db.post(
-            "/api/v1/oauth/login", 
+            "/api/v1/auth/login", 
             json={
                 "email": "nonexistent@example.com",
                 "password": "TestPass123!",
@@ -115,7 +115,7 @@ class TestOAuth2Integration:
         
         # Test with empty/invalid credentials
         response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "",
                 "password": "",
@@ -159,7 +159,7 @@ class TestOAuth2Integration:
         
         # Try to login with inactive user
         response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "inactive@example.com",
                 "password": "TestPass123!",
@@ -250,7 +250,7 @@ class TestOAuth2Integration:
         
         # Login as regular user
         regular_login = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "regular@example.com",
                 "password": "TestPass123!",
@@ -263,7 +263,7 @@ class TestOAuth2Integration:
         
         # Login as admin user
         admin_login = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "admin@example.com",
                 "password": "TestPass123!",
@@ -298,7 +298,7 @@ class TestOAuth2Integration:
         
         # Initial login
         login_response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": sample_user_in_db.email,
                 "password": "TestPass123!",
@@ -312,7 +312,7 @@ class TestOAuth2Integration:
         
         # Use refresh token to get new tokens
         refresh_response = client_with_real_db.post(
-            "/api/v1/oauth/refresh",
+            "/api/v1/auth/refresh",
             json={
                 "grant_type": "refresh_token",
                 "refresh_token": initial_refresh_token
@@ -328,7 +328,7 @@ class TestOAuth2Integration:
         # If refresh token rotation is implemented, the old refresh token should be invalid
         # This tests your actual token rotation security
         old_refresh_response = client_with_real_db.post(
-            "/api/v1/oauth/refresh",
+            "/api/v1/auth/refresh",
             json={
                 "grant_type": "refresh_token", 
                 "refresh_token": initial_refresh_token  # Old refresh token
@@ -341,7 +341,7 @@ class TestOAuth2Integration:
         
         # Test invalid refresh token
         invalid_refresh_response = client_with_real_db.post(
-            "/api/v1/oauth/refresh",
+            "/api/v1/auth/refresh",
             json={
                 "grant_type": "refresh_token",
                 "refresh_token": "invalid.refresh.token"
@@ -366,7 +366,7 @@ class TestOAuth2Integration:
         
         # Test OAuth callback that should create a real user
         callback_response = client_with_real_db.post(
-            "/api/v1/oauth/google/callback",
+            "/api/v1/auth/callback/google",
             json={
                 "code": "mock_google_auth_code",
                 "state": "mock_state_value"
@@ -404,7 +404,7 @@ class TestOAuth2Integration:
         
         # Test subsequent login with same Google account (should not create duplicate)
         second_callback = client_with_real_db.post(
-            "/api/v1/oauth/google/callback",
+            "/api/v1/auth/callback/google",
             json={
                 "code": "another_mock_code",
                 "state": "another_mock_state"  

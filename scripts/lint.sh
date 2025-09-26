@@ -3,7 +3,7 @@
 # Lint and format code
 set -e
 
-echo "🔍 Running code formatting and linting..."
+echo "🔍 Running Ruff formatting and linting..."
 
 # Activate virtual environment if it exists (supports both venv and .venv)
 if [ -d ".venv" ]; then
@@ -23,20 +23,12 @@ else
     echo "🏃 Using direct tool execution..."
 fi
 
-# Format code with black
-echo "🎨 Formatting code with black..."
-$RUNNER black .
+# Format code with Ruff
+echo "🎨 Formatting code with Ruff..."
+$RUNNER ruff format .
 
-# Sort imports with isort
-echo "📋 Sorting imports with isort..."
-$RUNNER isort .
+# Lint and auto-fix with Ruff
+echo "🔧 Linting with Ruff (auto-fix)..."
+$RUNNER ruff check --fix .
 
-# Lint with flake8
-echo "🔍 Linting with flake8..."
-$RUNNER flake8 .
-
-# Type check with mypy
-echo "🔎 Type checking with mypy..."
-$RUNNER mypy app/
-
-echo "✅ Code formatting and linting complete!"
+echo "✅ Ruff formatting and linting complete!"

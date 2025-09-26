@@ -32,6 +32,10 @@ from app.schemas.oauth import (
     TokenRequest,
     TokenResponse,
 )
+from app.schemas.oauth import GoogleUserInfo
+from app.services.oauth import OAuthProviderFactory
+from app.services.user import UserService
+from app.core.exceptions import ValidationError, AuthenticationError
 
 router = APIRouter()
 settings = get_settings()
@@ -79,16 +83,28 @@ async def authorize(
             )
 
         else:
-            # External OAuth provider - simplified implementation
-            auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={request.client_id}&redirect_uri={request.redirect_uri}&response_type=code&scope={request.scope or 'openid email profile'}&state={request.state}"
-            if request.code_challenge:
-                auth_url += f"&code_challenge={request.code_challenge}&code_challenge_method={request.code_challenge_method or 'S256'}"
+            # External OAuth provider - delegate to provider implementation
+            provider = OAuthProviderFactory.create_provider(request.provider)
+
+            redirect_uri = request.redirect_uri or settings.GOOGLE_REDIRECT_URI
+            if not redirect_uri:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Redirect URI is required for OAuth providers"
+                )
+
+            auth_url = await provider.get_authorization_url(
+                redirect_uri=redirect_uri,
+                state=request.state,
+                scope=request.scope,
+                code_challenge=request.code_challenge
+            )
 
             return AuthorizationResponse(
                 authorization_url=auth_url,
                 authorization_code=None,
                 state=request.state,
-                redirect_uri=request.redirect_uri,
+                redirect_uri=redirect_uri,
                 code_verifier=None
             )
 
@@ -165,19 +181,107 @@ async def token(
                 token_type="Bearer",
                 expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 refresh_token=refresh_token,
-                scope="openid email profile"
+                scope="openid email profile",
+                user_id=user.id,
+                email=user.email,
+                username=user.username,
+                is_new_user=False,
             )
 
         else:
-            # External OAuth provider - simplified implementation
-            # In production, you would:
-            # 1. Exchange code with actual provider
-            # 2. Get user info from provider
-            # 3. Create or update user in your database
+            provider = OAuthProviderFactory.create_provider(request.provider)
 
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="External OAuth providers not fully implemented yet"
+            redirect_uri = request.redirect_uri or settings.GOOGLE_REDIRECT_URI
+            if not redirect_uri:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Redirect URI is required for OAuth providers"
+                )
+
+            try:
+                provider_tokens = await provider.exchange_code_for_tokens(
+                    code=request.code,
+                    redirect_uri=redirect_uri,
+                    code_verifier=request.code_verifier,
+                )
+            except AuthenticationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"OAuth token exchange failed: {exc}"
+                ) from exc
+
+            access_token_provider = provider_tokens.get("access_token")
+            if not access_token_provider:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="OAuth provider did not return an access token"
+                )
+
+            refresh_token_provider = provider_tokens.get("refresh_token")
+            id_token_value = provider_tokens.get("id_token")
+
+            # Fetch user information from provider
+            try:
+                user_info = await provider.get_user_info(access_token_provider)
+            except AuthenticationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Failed to fetch user info: {exc}"
+                ) from exc
+
+            user_service = UserService(db)
+
+            if request.provider == "google":
+                try:
+                    google_user_info = GoogleUserInfo(**user_info)
+                except ValidationError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Invalid user info from Google: {exc}"
+                    ) from exc
+
+                user, is_new_user = await user_service.create_or_update_oauth_user(
+                    google_user_info,
+                    refresh_token=refresh_token_provider
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                    detail=f"OAuth provider '{request.provider}' not implemented"
+                )
+
+            # Validate ID token if provided (helps catch token misuse)
+            if id_token_value:
+                try:
+                    await provider.validate_id_token(id_token_value)
+                except AuthenticationError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"Invalid ID token: {exc}"
+                    ) from exc
+
+            access_token = create_access_token(
+                data={
+                    "sub": str(user.id),
+                    "email": user.email,
+                    "name": user.full_name or user.username,
+                    "provider": request.provider,
+                    "new_user": is_new_user,
+                }
+            )
+
+            refresh_token = create_refresh_token(user.id)
+
+            return TokenResponse(
+                access_token=access_token,
+                token_type="Bearer",
+                expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                refresh_token=refresh_token,
+                scope=provider_tokens.get("scope", "openid email profile"),
+                user_id=user.id,
+                email=user.email,
+                username=user.username,
+                is_new_user=is_new_user,
             )
 
     except HTTPException:
@@ -235,7 +339,11 @@ async def local_login(
             token_type="Bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             refresh_token=refresh_token,
-            scope="openid email profile"
+            scope="openid email profile",
+            user_id=user.id,
+            email=user.email,
+            username=user.username,
+            is_new_user=False,
         )
 
     except HTTPException:
@@ -298,7 +406,11 @@ async def refresh_token_endpoint(
             token_type="Bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             refresh_token=new_refresh_token,
-            scope="openid email profile"
+            scope="openid email profile",
+            user_id=user.id,
+            email=user.email,
+            username=user.username,
+            is_new_user=False,
         )
 
     except HTTPException:

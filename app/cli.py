@@ -164,7 +164,7 @@ def setup(
     typer.echo("\n📝 Admin credentials:")
     typer.echo(f"   Username: {username}")
     typer.echo(f"   Email: {email}")
-    typer.echo("\n🔗 You can now start the server and login at: /api/v1/oauth/login")
+    typer.echo("\n🔗 You can now start the server and login at: /api/v1/auth/login")
 
 
 if __name__ == "__main__":

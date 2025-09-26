@@ -8,11 +8,11 @@ from app.core.database import get_async_db
 from app.core.exceptions import AuthenticationError
 from app.core.security import verify_token
 from app.models.user import User
-from app.services.oauth import GoogleOAuthProvider
+from app.services.oauth import OAuthProviderFactory
 from app.services.user import UserService
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/oauth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_current_user(
@@ -45,7 +45,7 @@ async def get_current_user(
 
         # Try to verify as Google ID token
         try:
-            oauth_service = GoogleOAuthProvider()
+            oauth_service = OAuthProviderFactory.create_provider("google")
             id_info = await oauth_service.validate_id_token(token)
 
             # Extract Google user ID

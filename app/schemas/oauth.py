@@ -49,6 +49,10 @@ class TokenResponse(BaseModel):
     expires_in: int = Field(..., description="Token lifetime in seconds")
     refresh_token: str | None = Field(None, description="Refresh token")
     scope: str | None = Field(None, description="Granted scopes")
+    user_id: int | None = Field(None, description="Authenticated user ID")
+    email: EmailStr | None = Field(None, description="Authenticated user email")
+    username: str | None = Field(None, description="Authenticated username")
+    is_new_user: bool | None = Field(None, description="Indicates whether the user was newly created via OAuth")
 
 
 class LocalLoginRequest(BaseModel):

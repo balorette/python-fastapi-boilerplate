@@ -18,11 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSRF Protection**: Session-based state validation for OAuth flows
 
 #### 🏗️ New Components
-- **GoogleOAuthService** (`app/services/oauth.py`): Complete OAuth service with token validation
-- **OAuth Schemas** (`app/schemas/oauth.py`): Pydantic models for Google user data and tokens
+- **OAuth Provider Framework** (`app/services/oauth/`): Async provider interface, factory, and Google implementation
+- **OAuth Schemas** (`app/schemas/oauth.py`): Pydantic models for OAuth flows and Google user data
 - **OAuth Endpoints**: 
-  - `GET /api/v1/auth/oauth/google/authorize` - Start OAuth flow
-  - `POST /api/v1/auth/oauth/google/callback` - Handle OAuth callback
+  - `POST /api/v1/auth/authorize` - Start OAuth flow
+  - `GET /api/v1/auth/callback/{provider}` - Handle OAuth callbacks
 - **OAuth Test Suite** (`test_oauth.py`): Comprehensive testing for OAuth functionality
 
 #### 🗄️ Database Changes
@@ -129,7 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    # Add to your .env file
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret
-   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/oauth/google/callback
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback/google
    ```
 
 3. **Run Database Migration**:

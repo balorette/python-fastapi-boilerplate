@@ -39,7 +39,7 @@ def test_debug_oauth_login(client):
 
         # Test login endpoint
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPass123!",

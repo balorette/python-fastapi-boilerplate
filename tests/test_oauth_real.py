@@ -32,7 +32,7 @@ class TestOAuth2RealAuth:
 
         # Test login endpoint with real database user
         response = client_with_real_db.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPass123!",
@@ -66,7 +66,7 @@ class TestOAuth2RealAuth:
             mock_auth.side_effect = AuthenticationError("Invalid username/email or password")
             
             response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "WrongPassword123!",
@@ -147,7 +147,7 @@ class TestOAuth2RealAuth:
             
             # Get initial tokens
             login_response = client.post(
-                "/api/v1/oauth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",
@@ -167,7 +167,7 @@ class TestOAuth2RealAuth:
                     mock_get_user.return_value = mock_user
                 
                     refresh_response = client.post(
-                        "/api/v1/oauth/refresh",
+                        "/api/v1/auth/refresh",
                         json={
                             "grant_type": "refresh_token",
                             "refresh_token": initial_tokens["refresh_token"]
@@ -225,12 +225,12 @@ class TestOAuth2RealAuth:
         """Test OAuth login with various validation errors."""
         
         # Test missing required fields
-        response = client.post("/api/v1/oauth/login", json={})
+        response = client.post("/api/v1/auth/login", json={})
         assert response.status_code in [400, 422]  # Validation error
         
         # Test invalid grant type
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPass123!",
@@ -241,7 +241,7 @@ class TestOAuth2RealAuth:
         
         # Test invalid email format
         response = client.post(
-            "/api/v1/oauth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "invalid-email",
                 "password": "TestPass123!",

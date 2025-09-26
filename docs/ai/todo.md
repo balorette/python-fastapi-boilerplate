@@ -52,32 +52,32 @@
 **Dependencies**: Test suite must be fixed first  
 **Blocking**: Service layer testing
 
-#### 4. Migrate to Ruff Tooling ⚠️ PENDING
+#### 4. Migrate to Ruff Tooling 🔄 In Progress
 **Priority**: Medium  
 **Estimated Effort**: 2-3 hours
 
 **Sub-tasks**:
-- [ ] Install ruff via uv
-- [ ] Configure ruff in pyproject.toml
-- [ ] Remove black, isort, flake8, mypy configurations
+- [x] Install ruff via uv
+- [x] Configure ruff in pyproject.toml
+- [x] Remove black, isort, flake8, mypy configurations
+- [x] Update lint script to use ruff
 - [ ] Update pre-commit hooks to use ruff
-- [ ] Run ruff check and fix issues
 - [ ] Update CI/CD workflows if present
-- [ ] Update documentation with new commands
+- [x] Update documentation/README commands
 
 **Dependencies**: None  
 **Blocking**: Code quality enforcement
 
-#### 5. Update Project Configuration ⚠️ PENDING
+#### 5. Update Project Configuration 🔄 In Progress
 **Priority**: Low  
 **Estimated Effort**: 1-2 hours
 
 **Sub-tasks**:
-- [ ] Update Python target version to 3.12 in pyproject.toml
+- [x] Update Python target version to 3.12 in tooling (Dockerfile, docs)
 - [ ] Update type hints to use modern Python 3.12+ syntax
-- [ ] Review and update dependencies to latest stable versions
+- [x] Review and update dependencies to latest stable versions (remove legacy tooling)
 - [ ] Configure proper async mode for testing
-- [ ] Update README with new requirements
+- [x] Update README with new requirements
 
 **Dependencies**: Ruff migration  
 **Blocking**: None

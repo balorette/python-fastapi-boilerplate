@@ -214,12 +214,18 @@
   ```python
   # app/services/oauth/factory.py
   class OAuthProviderFactory:
-      @staticmethod
-      def create_provider(provider_name: str) -> BaseOAuthProvider:
-          match provider_name:
-              case "google": return GoogleOAuthService()
-              case "entra": return EntraIDOAuthService()  
-              case "okta": return OktaOAuthService()
+      _providers: dict[str, type[BaseOAuthProvider]] = {
+          "google": GoogleOAuthProvider,
+          "entra": EntraIDOAuthProvider,
+          "okta": OktaOAuthProvider,
+      }
+
+      @classmethod
+      def create_provider(cls, provider_name: str) -> BaseOAuthProvider:
+          try:
+              return cls._providers[provider_name]()
+          except KeyError as exc:
+              raise ValidationError("Unsupported provider") from exc
   ```
 
 - [ ] **Enhanced User Service**
