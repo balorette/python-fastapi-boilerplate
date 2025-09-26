@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Standardised current-user retrieval on `/api/v1/users/me` and removed the legacy `/api/v1/auth/me` alias to keep the API surface DRY.
+- OAuth user provisioning now derives unique usernames from the email local-part, ensuring deterministic slugs (with numeric suffixes when needed).
+- Improved error handling for unsupported auth providers and invalid logins so callers receive clear 4xx responses instead of generic 500s.
+- Updated `scripts/setup-db.sh` to run Alembic migrations automatically (with fallback to `init_db.py`) and committed `alembic.ini` for CLI access.
+
+### Fixed
+- Ensured metadata imports execute before table creation so `init_db.py` and Alembic operate against the complete schema even on fresh clones.
+
+### Added
+- Regression tests that cover the `/api/v1/users/me` endpoint after local login to guarantee future compatibility.
+
 ## [0.2.0] - 2025-09-24
 
 ### Added - Google OAuth Integration

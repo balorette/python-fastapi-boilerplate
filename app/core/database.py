@@ -15,6 +15,7 @@ from sqlalchemy.exc import DisconnectionError, OperationalError
 
 from app.core.config import settings
 from app.models.base import Base
+import app.models  # noqa: F401  # Ensure models are registered with SQLAlchemy metadata
 
 # Configure logging for database operations
 logger = logging.getLogger(__name__)

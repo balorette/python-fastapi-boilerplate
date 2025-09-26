@@ -23,7 +23,7 @@ class TestOAuth2RealAuth:
         response = client_with_real_db.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@example.com",
+                "email": sample_user_in_db.email,
                 "password": "TestPass123!",  # This matches the password used in sample_user_in_db
                 "grant_type": "password"
             }
@@ -44,13 +44,13 @@ class TestOAuth2RealAuth:
         assert "sub" in decoded_payload
         assert int(decoded_payload["sub"]) == sample_user_in_db.id
 
-    async def test_oauth_login_invalid_credentials(self, client_with_real_db):
+    async def test_oauth_login_invalid_credentials(self, client_with_real_db, sample_user_in_db):
         """Test OAuth login with invalid credentials using real authentication flow."""
 
         response = client_with_real_db.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@example.com",
+                "email": sample_user_in_db.email,
                 "password": "WrongPassword123!",
                 "grant_type": "password"
             }
@@ -112,7 +112,7 @@ class TestOAuth2RealAuth:
         login_response = client_with_real_db.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@example.com",
+                "email": sample_user_in_db.email,
                 "password": "TestPass123!",
                 "grant_type": "password"
             }

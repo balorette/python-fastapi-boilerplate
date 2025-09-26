@@ -1,6 +1,7 @@
 """Real OAuth2 authentication tests aligned with the provider/factory flow."""
 
 import pytest
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 
@@ -41,6 +42,7 @@ class TestOAuth2RealAuth:
         assert "invalid" in response.json()["detail"].lower()
 
     def test_protected_endpoint_with_real_jwt_validation(self, client: TestClient):
+        now = datetime.now(timezone.utc)
         test_user = {
             "id": 1,
             "username": "testuser",
@@ -49,6 +51,8 @@ class TestOAuth2RealAuth:
             "is_active": True,
             "is_superuser": False,
             "hashed_password": "not-used",
+            "created_at": now,
+            "updated_at": now,
         }
         access_token = create_access_token({"sub": str(test_user["id"]), "email": test_user["email"]})
         with patch("app.services.user.UserService.get_user") as mock_get_user:
@@ -132,6 +136,7 @@ class TestOAuth2RealAuth:
         ).status_code in (400, 422)
 
     def test_concurrent_token_usage(self, client: TestClient):
+        current = datetime.now(timezone.utc)
         user_data = {
             "id": 1,
             "username": "testuser",
@@ -140,6 +145,8 @@ class TestOAuth2RealAuth:
             "is_active": True,
             "is_superuser": False,
             "hashed_password": "not-used",
+            "created_at": current,
+            "updated_at": current,
         }
         token = create_access_token({"sub": str(user_data["id"]), "email": user_data["email"]})
         with patch("app.services.user.UserService.get_user") as mock_get_user:

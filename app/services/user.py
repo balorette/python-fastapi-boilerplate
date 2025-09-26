@@ -42,6 +42,20 @@ class UserService:
         """Verify a password against its hash."""
         return pwd_context.verify(plain_password, hashed_password)
 
+    def _derive_username_seed(self, value: str) -> str:
+        """Create a base username seed from an email or raw username."""
+        base = value.split("@")[0] if "@" in value else value
+        return base.lower()
+
+    async def _ensure_unique_username(self, seed: str) -> str:
+        """Ensure the generated username is unique, appending a suffix if needed."""
+        candidate = seed
+        suffix = 1
+        while await self.repository.username_exists(candidate):
+            candidate = f"{seed}{suffix}"
+            suffix += 1
+        return candidate
+
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with validation."""
         # Check if email already exists
@@ -273,13 +287,13 @@ class UserService:
 
         # Check if user exists and has a local password
         if not user:
-            raise AuthenticationError("Invalid username/email or password")
+            raise AuthenticationError("Invalid credentials")
 
         if not user.hashed_password:
             raise AuthenticationError("This account uses OAuth login. Please use Google Sign-In.")
 
         if not self._verify_password(password, user.hashed_password):
-            raise AuthenticationError("Invalid username/email or password")
+            raise AuthenticationError("Invalid credentials")
 
         if not user.is_active:
             raise AuthenticationError("User account is deactivated")
@@ -297,9 +311,11 @@ class UserService:
             # Link OAuth account to existing user
             return await self.link_oauth_account(existing_user.id, oauth_data)
 
-        # Create new OAuth user with email as username
+        username_seed = self._derive_username_seed(oauth_data.username or oauth_data.email)
+        unique_username = await self._ensure_unique_username(username_seed)
+
         user_dict = oauth_data.model_dump()
-        user_dict['username'] = oauth_data.email  # Use email as username for OAuth users
+        user_dict['username'] = unique_username
 
         try:
             user = await self.repository.create(user_dict)
@@ -364,7 +380,9 @@ class UserService:
         # Create OAuth user data
         oauth_user_data = OAuthUserCreate(
             email=google_user_info.email,
-            username=google_user_info.email,  # Use email as username
+            username=await self._ensure_unique_username(
+                self._derive_username_seed(google_user_info.email)
+            ),
             full_name=google_user_info.name,
             oauth_provider="google",
             oauth_id=google_user_info.id,

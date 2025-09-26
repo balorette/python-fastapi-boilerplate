@@ -421,7 +421,7 @@ class TestUserService:
         mock_session.execute.return_value = get_result
         
         # Execute & Assert
-        with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
+        with pytest.raises(AuthenticationError, match="Invalid credentials"):
             await user_service.authenticate_user("nonexistent", "password")
     
     @pytest.mark.asyncio
@@ -433,7 +433,7 @@ class TestUserService:
         
         with patch.object(user_service, '_verify_password', return_value=False):
             # Execute & Assert
-            with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
+            with pytest.raises(AuthenticationError, match="Invalid credentials"):
                 await user_service.authenticate_user("testuser", "wrongpass")
     
     @pytest.mark.asyncio

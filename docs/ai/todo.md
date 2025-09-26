@@ -82,6 +82,34 @@
 **Dependencies**: Ruff migration  
 **Blocking**: None
 
+#### 6. Add Strawberry GraphQL API ⚠️ PENDING
+**Priority**: Medium  
+**Estimated Effort**: 6-8 hours
+
+**Sub-tasks**:
+- [ ] Install Strawberry and supporting dependencies
+- [ ] Model GraphQL schema for core resources (users, auth metadata)
+- [ ] Expose GraphQL endpoint with async context tied to FastAPI application lifecycle
+- [ ] Add authentication directives integrating existing token validation
+- [ ] Document GraphQL usage and add sample queries in docs/features/
+
+**Dependencies**: Stable auth/session handling  
+**Blocking**: None
+
+#### 7. Implement Endpoint RBAC ⚠️ PENDING
+**Priority**: High  
+**Estimated Effort**: 5-7 hours
+
+**Sub-tasks**:
+- [ ] Define role model (e.g., admin, manager, user) in schema and database
+- [ ] Add role claims to issued JWTs and ensure refresh flow persists roles
+- [ ] Create reusable dependency that checks roles per endpoint/tag
+- [ ] Apply RBAC rules to sensitive routes (user management, admin actions)
+- [ ] Add tests covering role enforcement and failure cases
+
+**Dependencies**: Updated user/service layer, functioning auth flow  
+**Blocking**: Service refactor work
+
 ## Completed Tasks
 
 ### ✅ Documentation Reorganization (2025-01-25)

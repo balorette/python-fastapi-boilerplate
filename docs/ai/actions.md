@@ -4,6 +4,22 @@
 **Created**: 2025-01-25  
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-09-26 - Auth Hardening & Database Bootstrap Fixes
+**Context**: `/api/v1/users/me` returned 401 for freshly logged-in users because setup scripts left SQLite empty and documentation pointed clients at the wrong path. Alembic was unreachable from `setup-db.sh`, unsupported provider errors surfaced as 500s, and Passlib emitted warnings because `bcrypt` was missing.
+
+**Decision**: Load all model metadata before table creation, wire setup scripts to run `alembic upgrade head`, and standardise on `/api/v1/users/me` as the sole current-user endpoint. Harden error handling for unsupported providers and pin `bcrypt>=4.0.1` to stop runtime warnings.
+
+**Impact**:
+- Ensured metadata import order (`app/models/__init__.py`, `app/core/database.py`, `alembic/env.py`, `init_db.py`) so `Base.metadata.create_all` and Alembic see the `User` model.
+- Refreshed docs/tests to reference only `/api/v1/users/me` and removed the unused `/auth/me`/`/auth/register` routes from examples.
+- Updated `scripts/setup-db.sh` to run Alembic automatically (with `.venv`, `uv`, or fallback to `init_db.py`) and introduced an `alembic.ini` for CLI access.
+- Normalised auth error responses to surface 400/401 instead of generic 500s and upgraded dependency pins (`bcrypt>=4.0.1`).
+
+**Next Steps**:
+- Extend migration automation to production CI pipelines.
+- Add coverage for refresh-token misuse and unauthorised provider attempts.
+- Revisit repository-wide Ruff configuration (current B008 warnings for FastAPI dependencies).
+
 ## 2025-01-26 - OAuth Provider Implementation & Tooling Alignment
 **Context**: API endpoints and documentation still referenced legacy `/api/v1/oauth/*` paths and a deprecated `GoogleOAuthService`, leaving the Google flow unimplemented while tests/docs expected it. Tooling scripts also conflicted with the documented Ruff-first strategy, and the initial Alembic migration would drop the `users` table.
 

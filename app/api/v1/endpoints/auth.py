@@ -13,10 +13,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_async_db
+from app.core.exceptions import ValidationError as AppValidationError, AuthenticationError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -35,7 +37,6 @@ from app.schemas.oauth import (
 from app.schemas.oauth import GoogleUserInfo
 from app.services.oauth import OAuthProviderFactory
 from app.services.user import UserService
-from app.core.exceptions import ValidationError, AuthenticationError
 
 router = APIRouter()
 settings = get_settings()
@@ -48,7 +49,7 @@ async def authorize(
 ) -> AuthorizationResponse:
     """
     OAuth2 Authorization endpoint.
-    
+
     For external providers (Google, etc.), redirects to provider authorization.
     For local accounts, validates credentials and returns authorization code.
     """
@@ -67,7 +68,7 @@ async def authorize(
             if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid username/email or password"
+                    detail="Invalid credentials"
                 )
 
             # Generate authorization code (short-lived token)
@@ -108,11 +109,21 @@ async def authorize(
                 code_verifier=None
             )
 
+    except AppValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc)
+        ) from exc
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Authorization failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/token", response_model=TokenResponse)
@@ -234,7 +245,7 @@ async def token(
             if request.provider == "google":
                 try:
                     google_user_info = GoogleUserInfo(**user_info)
-                except ValidationError as exc:
+                except PydanticValidationError as exc:
                     raise HTTPException(
                         status_code=status.HTTP_502_BAD_GATEWAY,
                         detail=f"Invalid user info from Google: {exc}"
@@ -284,13 +295,23 @@ async def token(
                 is_new_user=is_new_user,
             )
 
+    except AppValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc)
+        ) from exc
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Token exchange failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -310,7 +331,7 @@ async def local_login(
         if not user or not user.hashed_password or not verify_password(request.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username/email or password"
+                detail="Invalid credentials"
             )
 
         if not user.is_active:
@@ -346,13 +367,23 @@ async def local_login(
             is_new_user=False,
         )
 
+    except AppValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc)
+        ) from exc
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Login failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/refresh", response_model=TokenResponse)

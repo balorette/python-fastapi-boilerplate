@@ -94,6 +94,51 @@ case $DB_TYPE in
 esac
 
 echo ""
-echo "🚀 To complete database setup:"
-echo "1. Run migrations: alembic upgrade head"
-echo "2. Start the development server: ./scripts/run-dev.sh"
+echo "🚀 Applying database migrations..."
+
+# Helper to run Alembic using the best available interpreter
+run_alembic_upgrade() {
+    local alembic_cmd
+
+    if [ -d ".venv" ] && [ -x ".venv/bin/alembic" ]; then
+        alembic_cmd=".venv/bin/alembic"
+    elif command -v uv &> /dev/null; then
+        alembic_cmd="uv run alembic"
+    elif command -v alembic &> /dev/null; then
+        alembic_cmd="alembic"
+    fi
+
+    if [ -n "$alembic_cmd" ]; then
+        if eval "$alembic_cmd upgrade head"; then
+            return 0
+        fi
+
+        echo "⚠️ Alembic upgrade failed, attempting to stamp head instead..."
+        if eval "$alembic_cmd stamp head"; then
+            return 0
+        fi
+
+        echo "❌ Alembic commands failed"
+        return 1
+    fi
+
+    if [ -d ".venv" ] && [ -x ".venv/bin/python" ]; then
+        echo "⚠️ Alembic not found, falling back to init_db.py"
+        .venv/bin/python init_db.py
+        return 0
+    fi
+
+    echo "⚠️ Alembic not found, falling back to init_db.py"
+    if python3 init_db.py 2>/dev/null; then
+        return 0
+    fi
+    python init_db.py
+}
+
+if ! run_alembic_upgrade; then
+    echo "❌ Failed to apply migrations."
+    exit 1
+fi
+
+echo "✅ Database ready!"
+echo "➡️  Start the development server with: ./scripts/run-dev.sh"

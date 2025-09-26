@@ -216,3 +216,26 @@ def test_token_validation_flow(client_with_db: TestClient, auth_test_user):
     )
     # Should not be unauthorized
     assert protected_response.status_code != 401
+
+
+def test_users_me_endpoint(client_with_db: TestClient, auth_test_user):
+    """Primary `/users/me` endpoint should return the authenticated user."""
+    login_response = client_with_db.post(
+        "/api/v1/auth/login",
+        json={
+            "email": auth_test_user.email,
+            "password": "TestPass123!",
+            "grant_type": "password"
+        }
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    response = client_with_db.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["email"] == auth_test_user.email

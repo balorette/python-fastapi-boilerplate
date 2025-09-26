@@ -145,8 +145,7 @@ Content-Type: application/json
 
 ### Existing Endpoints (Still Work)
 - **POST `/api/v1/auth/login`** - Local username/password login
-- **POST `/api/v1/auth/register`** - Local user registration
-- **GET `/api/v1/auth/me`** - Get current user (works with both token types)
+- **GET `/api/v1/users/me`** - Current-user endpoint for both token types
 
 ## 🗄️ Database Schema Changes
 
@@ -294,7 +293,7 @@ localStorage.setItem('user', JSON.stringify(user));
 
 ```javascript
 // Both local JWT and Google tokens work the same way
-const response = await fetch('/api/v1/auth/me', {
+const response = await fetch('/api/v1/users/me', {
     headers: {
         'Authorization': `Bearer ${access_token}`
     }

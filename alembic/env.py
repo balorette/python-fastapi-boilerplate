@@ -11,7 +11,8 @@ from alembic import context
 
 # Import your models here to ensure they are registered
 from app.core.config import settings
-from app.models.base import Base  # This will import all models
+from app.models.base import Base  # Base metadata
+import app.models  # noqa: F401  # Ensure models are registered for migrations
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

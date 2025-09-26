@@ -95,11 +95,11 @@ class TestUserServiceIntegration:
         assert authenticated_user.email == sample_user_in_db.email
         
         # Should fail with wrong password
-        with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
+    with pytest.raises(AuthenticationError, match="Invalid credentials"):
             await service.authenticate_user(sample_user_in_db.username, "WrongPassword123!")
             
         # Should fail with non-existent user
-        with pytest.raises(AuthenticationError, match="Invalid username/email or password"):
+    with pytest.raises(AuthenticationError, match="Invalid credentials"):
             await service.authenticate_user("nonexistentuser", "TestPass123!")
             
         # Should work with email as username
