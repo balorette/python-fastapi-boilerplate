@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-09-26
+
+### Added
+- Regression tests covering `/api/v1/users/me` for both local and mocked OAuth flows.
+- Documentation and task tracking consolidated under `docs/` (see `docs/todo.md`, `docs/features/OAUTH_IMPLEMENTATION.md`).
+
+### Changed
+- Simplified auth errors to consistently return `Invalid credentials`.
+- OAuth user provisioning now derives deterministic usernames from email local-parts with collision handling.
+- `scripts/setup-db.sh` prefers Alembic migrations and falls back to `init_db.py`, with metadata imports guaranteed before table creation.
+- Moved implementation notes (`DOCUMENTATION_UPDATES.md`, `IMPLEMENTATION_COMPLETE.md`) into the `docs/` tree.
+
+### Fixed
+- Integration tests for inactive accounts and invalid tokens now assert the canonical API responses.
+
 ### Changed
 - Standardised current-user retrieval on `/api/v1/users/me` and removed the legacy `/api/v1/auth/me` alias to keep the API surface DRY.
 - OAuth user provisioning now derives unique usernames from the email local-part, ensuring deterministic slugs (with numeric suffixes when needed).
