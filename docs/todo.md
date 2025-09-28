@@ -1,7 +1,7 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
 **Document Version**: 1.0.0  
-**Last Updated**: 2025-09-28
+**Last Updated**: 2025-09-29
 
 ## Phase 1 – Critical Fixes (In Progress)
 
@@ -10,10 +10,10 @@
 - [x] Update pytest async settings and ensure DB isolation (per-test SQLite `.venv`-backed fixtures)
 - [x] Restore 100% pass rate across unit/integration suites (`uv run pytest`)
 
-### 2. Complete Core Service Implementations ⚠️ PENDING
-- [ ] Finish gaps in `UserService` coverage (>80% target)
-- [ ] Create dedicated auth service once repositories are stable
-- [ ] Add docstrings/validation for new service methods
+### 2. Complete Core Service Implementations ✅ COMPLETE
+- [x] Finish gaps in `UserService` coverage (>80% target)
+- [x] Create dedicated auth service once repositories are stable
+- [x] Add docstrings/validation for new service methods
 
 ### 3. Migrate to Ruff Tooling 🔄 IN PROGRESS
 - [x] Configure Ruff in `pyproject.toml`

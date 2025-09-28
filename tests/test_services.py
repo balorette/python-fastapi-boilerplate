@@ -1,16 +1,19 @@
 """Comprehensive tests for service layer patterns."""
 
-import pytest
+from copy import deepcopy
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
 from typing import List, Optional
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 from sqlalchemy import Result
 
-from app.services.user import UserService
+from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError, ValidationError
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserPasswordUpdate, UserResponse
-from app.schemas.pagination import PaginatedResponse, PaginationParams, SearchParams, DateRangeParams
-from app.core.exceptions import NotFoundError, ConflictError, ValidationError, AuthenticationError
+from app.schemas.oauth import GoogleUserInfo, OAuthUserCreate
+from app.schemas.pagination import DateRangeParams, PaginatedResponse, PaginationParams, SearchParams
+from app.schemas.user import UserCreate, UserPasswordUpdate, UserResponse, UserUpdate
+from app.services.user import UserService
 
 
 class TestUserService:
@@ -119,6 +122,336 @@ class TestUserService:
         assert result.total == 3
         assert result.page == 1
         assert mock_session.execute.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_update_user_success(self, user_service, sample_user):
+        """Ensure update_user delegates to repository after validation."""
+        updated_user = deepcopy(sample_user)
+        updated_user.email = "new@example.com"
+
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service.repository.email_exists = AsyncMock(return_value=False)
+        user_service.repository.username_exists = AsyncMock(return_value=False)
+        user_service.repository.update = AsyncMock(return_value=updated_user)
+
+        result = await user_service.update_user(sample_user.id, UserUpdate(email="new@example.com"))
+
+        assert result.email == "new@example.com"
+        user_service.repository.update.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_user_conflict_email(self, user_service, sample_user):
+        """Conflict is raised when updating to a duplicate email."""
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service.repository.email_exists = AsyncMock(return_value=True)
+
+        with pytest.raises(ConflictError):
+            await user_service.update_user(sample_user.id, UserUpdate(email="dup@example.com"))
+
+    @pytest.mark.asyncio
+    async def test_get_active_users_paginated(self, user_service, sample_users_list, mock_session):
+        """Active user pagination proxies to repository counts."""
+        params = PaginationParams(skip=0, limit=10, order_by=None)
+        user_service.repository.count_active_users = AsyncMock(return_value=2)
+        user_service.repository.get_active_users = AsyncMock(return_value=sample_users_list[:2])
+
+        result = await user_service.get_active_users_paginated(params)
+
+        assert result.total == 2
+        assert len(result.items) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_users_by_date_range(self, user_service, sample_users_list):
+        """Date range filtering composes repository filters."""
+        date_params = DateRangeParams(start_date="2024-01-01", end_date="2024-01-31")
+        pagination = PaginationParams(skip=0, limit=10, order_by=None)
+
+        user_service.repository.count_records = AsyncMock(return_value=1)
+        user_service.repository.get_users_by_creation_date = AsyncMock(return_value=sample_users_list[:1])
+
+        result = await user_service.get_users_by_date_range(date_params, pagination)
+
+        assert result.total == 1
+        user_service.repository.count_records.assert_awaited_with(
+            {'created_at': {'gte': '2024-01-01', 'lte': '2024-01-31'}}
+        )
+
+    @pytest.mark.asyncio
+    async def test_ensure_unique_username_handles_collisions(self, user_service):
+        """Username collisions receive numeric suffixes."""
+        user_service.repository.username_exists = AsyncMock(side_effect=[True, True, False])
+
+        result = await user_service._ensure_unique_username("tester")
+
+        assert result == "tester2"
+        assert user_service.repository.username_exists.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_update_password_success(self, user_service, sample_user):
+        """Passwords can be rotated when verification passes."""
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service._verify_password = MagicMock(return_value=True)
+        user_service._hash_password = MagicMock(return_value="new-hash")
+        user_service.repository.update = AsyncMock(return_value=sample_user)
+
+        result = await user_service.update_password(
+            sample_user.id,
+            UserPasswordUpdate(
+                current_password="OldPass1!",
+                new_password="NewPass1!",
+                confirm_new_password="NewPass1!",
+            ),
+        )
+
+        assert result == sample_user
+        user_service.repository.update.assert_awaited_with(sample_user, {"hashed_password": "new-hash"})
+
+    @pytest.mark.asyncio
+    async def test_update_password_invalid_current(self, user_service, sample_user):
+        """Invalid current passwords raise authentication errors."""
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service._verify_password = MagicMock(return_value=False)
+
+        with pytest.raises(AuthenticationError):
+            await user_service.update_password(
+                sample_user.id,
+                UserPasswordUpdate(
+                    current_password="BadPass1!",
+                    new_password="NewPass1!",
+                    confirm_new_password="NewPass1!",
+                ),
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_password_oauth_only(self, user_service, sample_user):
+        """OAuth-only accounts cannot rotate passwords."""
+        oauth_only = deepcopy(sample_user)
+        oauth_only.hashed_password = None
+
+        user_service.get_user = AsyncMock(return_value=oauth_only)
+
+        with pytest.raises(ValidationError):
+            await user_service.update_password(
+                oauth_only.id,
+                UserPasswordUpdate(
+                    current_password="Irrelev1!",
+                    new_password="NewPass1!",
+                    confirm_new_password="NewPass1!",
+                ),
+            )
+
+    @pytest.mark.asyncio
+    async def test_delete_user_not_found(self, user_service):
+        """Deleting a missing user raises NotFoundError."""
+        user_service.repository.record_exists = AsyncMock(return_value=False)
+
+        with pytest.raises(NotFoundError):
+            await user_service.delete_user(999)
+
+    @pytest.mark.asyncio
+    async def test_activate_user(self, user_service, sample_user):
+        """Activation toggles inactive accounts."""
+        inactive = deepcopy(sample_user)
+        inactive.is_active = False
+        activated = deepcopy(sample_user)
+        activated.is_active = True
+
+        user_service.get_user = AsyncMock(return_value=inactive)
+        user_service.repository.update = AsyncMock(return_value=activated)
+
+        result = await user_service.activate_user(inactive.id)
+
+        assert result.is_active is True
+
+    @pytest.mark.asyncio
+    async def test_deactivate_user(self, user_service, sample_user):
+        """Deactivation toggles active accounts."""
+        active = deepcopy(sample_user)
+        deactivated = deepcopy(sample_user)
+        deactivated.is_active = False
+
+        user_service.get_user = AsyncMock(return_value=active)
+        user_service.repository.update = AsyncMock(return_value=deactivated)
+
+        result = await user_service.deactivate_user(active.id)
+
+        assert result.is_active is False
+
+    @pytest.mark.asyncio
+    async def test_create_or_update_oauth_user_updates_existing(self, user_service, sample_user):
+        """Existing OAuth users are updated rather than recreated."""
+        user_service.get_by_oauth_id = AsyncMock(return_value=sample_user)
+        user_service.repository.update = AsyncMock(return_value=sample_user)
+        user_service.session.commit = AsyncMock()
+
+        google_info = GoogleUserInfo(
+            id="google-id",
+            email=sample_user.email,
+            verified_email=True,
+            name="Test User",
+            given_name="Test",
+            family_name="User",
+            picture=None,
+            locale="en-US",
+        )
+
+        user, is_new = await user_service.create_or_update_oauth_user(google_info, refresh_token="refresh")
+
+        assert user == sample_user
+        assert is_new is False
+        user_service.repository.update.assert_awaited_once()
+        user_service.session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_or_update_oauth_user_creates_new(self, user_service, mock_session):
+        """New OAuth identities create fresh accounts with unique usernames."""
+        user_service.get_by_oauth_id = AsyncMock(return_value=None)
+        user_service.repository.get_by_email = AsyncMock(return_value=None)
+        user_service.repository.username_exists = AsyncMock(return_value=False)
+
+        new_user = MagicMock()
+        user_service.repository.create = AsyncMock(return_value=new_user)
+        user_service.session.commit = AsyncMock()
+        user_service.session.rollback = AsyncMock()
+
+        google_info = GoogleUserInfo(
+            id="new-id",
+            email="new@example.com",
+            verified_email=True,
+            name="New User",
+            given_name="New",
+            family_name="User",
+            picture=None,
+            locale="en-US",
+        )
+
+        user, is_new = await user_service.create_or_update_oauth_user(google_info, refresh_token="refresh")
+
+        assert user == new_user
+        assert is_new is True
+        user_service.repository.create.assert_awaited_once()
+        user_service.session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_oauth_user_links_existing(self, user_service, sample_user):
+        """Existing email triggers account linking."""
+        user_service.repository.get_by_email = AsyncMock(return_value=sample_user)
+        user_service.link_oauth_account = AsyncMock(return_value=sample_user)
+
+        oauth_payload = GoogleUserInfo(
+            id="google-id",
+            email=sample_user.email,
+            verified_email=True,
+            name="Test User",
+            given_name="Test",
+            family_name="User",
+            picture=None,
+            locale="en-US",
+        )
+
+        result = await user_service.create_oauth_user(
+            OAuthUserCreate(
+                email=oauth_payload.email,
+                username=sample_user.username,
+                full_name=oauth_payload.name,
+                oauth_provider="google",
+                oauth_id=oauth_payload.id,
+                oauth_email_verified=True,
+                oauth_refresh_token="refresh",
+                is_active=True,
+                is_superuser=False,
+            )
+        )
+
+        assert result == sample_user
+        user_service.link_oauth_account.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_link_oauth_account_success(self, user_service, sample_user):
+        """Linking OAuth data updates the repository and commits."""
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service.repository.update = AsyncMock(return_value=sample_user)
+        user_service.session.commit = AsyncMock()
+
+        oauth_payload = OAuthUserCreate(
+            email=sample_user.email,
+            username=sample_user.username,
+            full_name=sample_user.full_name,
+            oauth_provider="google",
+            oauth_id="google-id",
+            oauth_email_verified=True,
+            oauth_refresh_token="refresh",
+            is_active=True,
+            is_superuser=False,
+        )
+
+        result = await user_service.link_oauth_account(sample_user.id, oauth_payload)
+
+        assert result == sample_user
+        user_service.session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_link_oauth_account_conflict(self, user_service, sample_user):
+        """Conflicts rollback the session during linking."""
+        user_service.get_user = AsyncMock(return_value=sample_user)
+        user_service.repository.update = AsyncMock(side_effect=Exception("boom"))
+        user_service.session.commit = AsyncMock()
+        user_service.session.rollback = AsyncMock()
+
+        oauth_payload = OAuthUserCreate(
+            email=sample_user.email,
+            username=sample_user.username,
+            full_name=sample_user.full_name,
+            oauth_provider="google",
+            oauth_id="google-id",
+            oauth_email_verified=True,
+            oauth_refresh_token="refresh",
+            is_active=True,
+            is_superuser=False,
+        )
+
+        with pytest.raises(ConflictError):
+            await user_service.link_oauth_account(sample_user.id, oauth_payload)
+
+        user_service.session.rollback.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_authenticate_oauth_user_success(self, user_service, sample_user):
+        """OAuth authentication returns active users."""
+        user_service.get_by_oauth_id = AsyncMock(return_value=sample_user)
+
+        result = await user_service.authenticate_oauth_user("google", "id")
+
+        assert result == sample_user
+
+    @pytest.mark.asyncio
+    async def test_authenticate_oauth_user_missing(self, user_service, sample_user):
+        """Missing OAuth accounts raise authentication errors."""
+        user_service.get_by_oauth_id = AsyncMock(return_value=None)
+
+        with pytest.raises(AuthenticationError):
+            await user_service.authenticate_oauth_user("google", "id")
+
+    @pytest.mark.asyncio
+    async def test_authenticate_oauth_user_inactive(self, user_service, sample_user):
+        """Inactive OAuth accounts are rejected."""
+        inactive_user = deepcopy(sample_user)
+        inactive_user.is_active = False
+        user_service.get_by_oauth_id = AsyncMock(return_value=inactive_user)
+
+        with pytest.raises(AuthenticationError):
+            await user_service.authenticate_oauth_user("google", "id")
+
+    @pytest.mark.asyncio
+    async def test_get_user_stats(self, user_service):
+        """Aggregated user stats return computed fields."""
+        user_service.repository.count_records = AsyncMock(side_effect=[10, 3, 2])
+        user_service.repository.count_active_users = AsyncMock(return_value=7)
+
+        stats = await user_service.get_user_stats()
+
+        assert stats["total_users"] == 10
+        assert stats["inactive_users"] == 3
     
     @pytest.mark.asyncio
     async def test_get_users_paginated_with_filters(self, user_service, mock_session, sample_users_list):
