@@ -1,40 +1,21 @@
 """Test configuration and fixtures with SQLite integration."""
 
-import pytest
 import asyncio
-import tempfile
 import os
+import tempfile
 from typing import AsyncGenerator
+
+import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.models.base import Base
-from app.core.database import get_async_db
 from app.api.dependencies import get_user_service
-from app.services.user import UserService
-from app.models.user import User
+from app.core.database import get_async_db
 from app.core.security import get_password_hash
+from app.models.base import Base
+from app.models.user import User
+from app.services.user import UserService
 from main import app
-
-# Test database configuration using SQLite
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
-
-# Create test engine with proper SQLite configuration
-async_test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    echo=False,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-AsyncTestingSessionLocal = async_sessionmaker(
-    bind=async_test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-    autocommit=False
-)
 
 
 @pytest.fixture(scope="session")
@@ -45,36 +26,38 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def setup_test_database():
-    """Create and setup test database tables."""
-    # Create all tables
-    async with async_test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    yield
-    
-    # Cleanup: Drop all tables and dispose engine
-    async with async_test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await async_test_engine.dispose()
-    
-    # Remove test database file if it exists
-    if os.path.exists("./test.db"):
-        os.remove("./test.db")
-
-
 @pytest.fixture
 async def async_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create async database session for tests with transaction rollback."""
-    async with AsyncTestingSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            # Rollback any uncommitted changes
-            if session.in_transaction():
-                await session.rollback()
-            await session.close()
+    """Create an isolated SQLite database for each test case."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    database_url = f"sqlite+aiosqlite:///{path}"
+
+    engine = create_async_engine(
+        database_url,
+        echo=False,
+        connect_args={"check_same_thread": False},
+    )
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    try:
+        async with session_factory() as session:
+            try:
+                yield session
+            finally:
+                if session.in_transaction():
+                    await session.rollback()
+        await engine.dispose()
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
 
 
 @pytest.fixture
