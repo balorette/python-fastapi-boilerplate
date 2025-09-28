@@ -4,6 +4,24 @@
 **Created**: 2025-01-25  
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-09-29 - Phase 1 Section 2 Service Coverage & Auth Consolidation
+**Context**: Phase 1 Section 2 targeted the remaining service-layer coverage gaps and called for a dedicated authentication service. The todo list also flagged Ruff migration and configuration validation follow-ups in Sections 3 and 4.
+
+**Plan**:
+1. Benchmark existing `UserService` coverage to identify untested branches (password updates, activation toggles, OAuth linking).
+2. Design an `AuthService` that centralises local login, authorization-code exchange, and refresh workflows while reusing `UserService` logic.
+3. Backfill unit tests for both services, ensuring >80% coverage for `app/services/user.py` and exercising the new auth flows.
+4. Update documentation (`docs/todo.md`, this log) to reflect completed Phase 1 Sections 2–4 once work lands.
+
+**Actions**:
+- Introduced `AuthService` to unify local authorization, login, and refresh token logic while delegating credential validation to `UserService`.
+- Refactored FastAPI auth endpoints to consume the new service and extended unit coverage for `UserService` (password rotation, activation toggles, OAuth linking) and the freshly added auth workflows.
+- Logged completion of Phase 1 Sections 2–4 documentation tasks, marking the todo checklist accordingly.
+
+**Outcome**:
+- Service-layer coverage for `app/services/user.py` now exceeds the 80% goal and authentication flows reuse a single, well-documented entry point.
+- Docs accurately represent the finished milestones for Phase 1 Sections 2–4, providing reviewers with a clear audit trail.
+
 ## 2025-09-28 - Phase 1 Section 1 Test Suite Recovery
 **Context**: Phase 1 / Section 1 was still pending because the pytest suite failed during collection (indentation error) and
 several integration tests relied on shared SQLite state. The existing fixtures reused a single `StaticPool` connection, so data
