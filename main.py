@@ -13,6 +13,7 @@ from app.api.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
+from app.api.routes.metrics import attach_metrics_endpoint
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.database import init_database
@@ -73,20 +74,39 @@ def create_application() -> FastAPI:
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
-    app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(
-        PerformanceMonitoringMiddleware,
-        slow_request_threshold_ms=settings.PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS,
-    )
-    app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(
-        RateLimitingMiddleware,
-        requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
-        exempt_paths=settings.RATE_LIMIT_EXEMPT_PATHS,
-    )
+
+    if settings.SECURITY_HEADERS_ENABLED:
+        app.add_middleware(SecurityHeadersMiddleware)
+
+    if settings.PERFORMANCE_MONITORING_ENABLED:
+        app.add_middleware(
+            PerformanceMonitoringMiddleware,
+            slow_request_threshold_ms=settings.PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS,
+        )
+
+    if settings.REQUEST_LOGGING_ENABLED:
+        app.add_middleware(
+            RequestLoggingMiddleware,
+            correlation_header_name=settings.REQUEST_ID_HEADER_NAME,
+            process_time_header_name=settings.PROCESS_TIME_HEADER_NAME,
+        )
+
+    if settings.RATE_LIMIT_ENABLED:
+        requests_per_minute = (
+            settings.RATE_LIMIT_REQUESTS_PER_MINUTE
+            or settings.RATE_LIMIT_REQUESTS
+        )
+        app.add_middleware(
+            RateLimitingMiddleware,
+            requests_per_minute=requests_per_minute,
+            exempt_paths=settings.RATE_LIMIT_EXEMPT_PATHS,
+        )
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    if settings.prometheus_metrics_enabled:
+        attach_metrics_endpoint(app)
 
     # Register error handlers
     register_error_handlers(app)

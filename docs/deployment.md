@@ -33,6 +33,36 @@
    GOOGLE_REDIRECT_URI=https://yourdomain.com/api/v1/auth/callback/google
    ```
 
+## Observability & Health Endpoints
+
+The boilerplate exposes a small set of probes and headers that operators can rely on during rollouts:
+
+- `GET /api/v1/health` returns an aggregated payload with `status`, `checks`, `metrics`, and `alerts`. Each check includes a
+  `status` flag so dashboards can highlight degraded subsystems (for example when `AUDIT_LOG_ENABLED=false`).
+- `GET /api/v1/health/liveness` reports process availability, while `GET /api/v1/health/readiness` validates database
+  connectivity and responds with `503` plus an error payload whenever the dependency check fails.
+- When `PROMETHEUS_METRICS_ENABLED=true`, `GET /metrics` serves Prometheus-formatted counters, gauges, and histograms that can
+  be scraped by infrastructure tooling.
+
+Every HTTP response includes the structured logging headers when `REQUEST_LOGGING_ENABLED=true`:
+
+- `${REQUEST_ID_HEADER_NAME}` (default `X-Correlation-ID`) exposes the correlation ID that also appears in structured logs.
+- `${PROCESS_TIME_HEADER_NAME}` (default `X-Process-Time`) reports request latency in milliseconds.
+
+You can adjust these toggles in `.env.production` or other environment files:
+
+```env
+SECURITY_HEADERS_ENABLED=true
+PERFORMANCE_MONITORING_ENABLED=true
+REQUEST_LOGGING_ENABLED=true
+REQUEST_ID_HEADER_NAME=X-Correlation-ID
+PROCESS_TIME_HEADER_NAME=X-Process-Time
+PROMETHEUS_METRICS_ENABLED=false
+```
+
+Set the values to `false` if you need to disable specific middleware locally; production environments should keep them enabled
+so observability parity is maintained between clusters and staging.
+
 ### Docker Deployment
 
 #### Option 1: Docker Compose (Recommended)

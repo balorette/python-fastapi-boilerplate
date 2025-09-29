@@ -2,6 +2,13 @@
 
 from datetime import datetime
 
+from fastapi import status
+from fastapi.testclient import TestClient
+
+from app.api.dependencies import get_db_session
+from app.core.config import settings
+from main import create_application
+
 
 def test_health_summary_exposes_compliance_checks(client_with_db):
     """The aggregated health endpoint should surface structured subsystem data."""
@@ -43,3 +50,39 @@ def test_readiness_probe_validates_database(client_with_db):
     payload = response.json()
     assert payload["status"] == "ready"
     datetime.fromisoformat(payload["timestamp"])
+
+
+def test_health_summary_degrades_when_audit_logging_disabled(monkeypatch, client_with_db):
+    """Disabling audit logging should surface as a degraded configuration check."""
+
+    monkeypatch.setattr(settings, "AUDIT_LOG_ENABLED", False)
+
+    response = client_with_db.get("/api/v1/health")
+    assert response.status_code == 200
+
+    configuration_check = response.json()["checks"]["configuration"]
+    assert configuration_check["audit_log_enabled"] is False
+    assert configuration_check["status"].lower() in {"degraded", "unhealthy"}
+
+
+def test_readiness_probe_returns_service_unavailable_when_db_fails():
+    """The readiness probe should return 503 if the database check raises an error."""
+
+    failing_app = create_application()
+
+    class _FailingSession:
+        async def execute(self, *_args, **_kwargs):  # noqa: D401 - stub behaviour
+            raise RuntimeError("database offline")
+
+    async def _get_failing_session():
+        return _FailingSession()
+
+    failing_app.dependency_overrides[get_db_session] = _get_failing_session
+
+    with TestClient(failing_app, raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/health/readiness")
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    body = response.json()["detail"]
+    assert body["status"] == "unhealthy"
+    assert "database offline" in body["error"]
