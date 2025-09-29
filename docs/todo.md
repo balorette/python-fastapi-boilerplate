@@ -53,6 +53,8 @@
 - [ ] Observe hit/miss metrics
 
 ### Monitoring & Observability
+- [x] Adopt structured JSON logging with compliance metadata
+- [x] Upgrade health endpoints with detailed telemetry & probes
 - [ ] Add Prometheus exporters & basic Grafana dashboard
 - [ ] Instrument OpenTelemetry traces for auth flows
 - [ ] Track critical business metrics (logins/day, provider mix)

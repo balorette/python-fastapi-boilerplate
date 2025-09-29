@@ -4,6 +4,16 @@
 **Created**: 2025-01-25  
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-05 - Structured Logging & Health Telemetry Adoption
+**Context**: Findings from the Astraeus audit highlighted gaps in structured audit logging, request middleware parity, and operator-grade health reporting. The boilerplate had partial code drops but unresolved imports, missing modules, and outdated tests that still targeted the legacy `/health/detailed` responses.
+
+**Actions**:
+- Extended configuration to expose lower-case accessors and feature toggles consumed by the Astraeus health stack, and added `python-json-logger` plus `psutil` so the structured logging pipeline can emit compliant records.
+- Implemented `app/core/health.py` and rewired the FastAPI health endpoints to use the enterprise checks (database timing, psutil telemetry, config flags, module snapshots) with corrected dependency imports.
+- Cleaned up `main.py` lifecycle wiring so logging initialises via the middleware stack, and overhauled the health tests/fixtures to validate the new `/api/v1/health`, `/liveness`, and `/readiness` probes against the temporary SQLite harness.
+
+**Outcome**: The boilerplate now mirrors the Astraeus observability model—structured logs route through rotating JSON handlers with compliance metadata, middleware adds correlation/latency/rate limiting, and the health suite surfaces actionable subsystem status without import errors. The updated tests cover the richer endpoints to prevent regression.
+
 ## 2025-09-29 - Phase 1 Section 2 Service Coverage & Auth Consolidation
 **Context**: Phase 1 Section 2 targeted the remaining service-layer coverage gaps and called for a dedicated authentication service. The todo list also flagged Ruff migration and configuration validation follow-ups in Sections 3 and 4.
 

@@ -4,36 +4,44 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.middleware import (
+    PerformanceMonitoringMiddleware,
+    RateLimitingMiddleware,
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.core.logging import setup_logging
 from app.core.database import init_database
 from app.core.error_handlers import register_error_handlers
+from app.core.logging import get_logger, setup_logging
+
+
+logger = get_logger("app.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
-    # Startup
-    setup_logging()
-    
-    # Security warning for default secret key
+    setup_logging(settings.LOG_LEVEL)
+    logger.info("Application starting", extra={"environment": settings.environment})
+
     if settings.SECRET_KEY == "your-secret-key-change-this-in-production":
-        print(
-            "⚠️  WARNING: Using default SECRET_KEY! "
-            "This is INSECURE for production use. "
-            "Please set a secure SECRET_KEY environment variable."
+        logger.warning(
+            "Default SECRET_KEY detected. Override the value before running in production.",
+            extra={"security": "secret_key"},
         )
 
     if settings.INIT_DB:
+        logger.info("Initializing database on startup")
         await init_database()
-    
+
     yield
-    # Shutdown
-    pass
+
+    logger.info("Application shutting down", extra={"environment": settings.environment})
 
 
 def create_application() -> FastAPI:
@@ -51,23 +59,35 @@ def create_application() -> FastAPI:
     # Add session middleware for OAuth CSRF protection
     app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
-    # Set all CORS enabled origins
-    if settings.BACKEND_CORS_ORIGINS:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
+    cors_allow_origins = (
+        [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
+        if settings.BACKEND_CORS_ORIGINS
+        else settings.CORS_ALLOW_ORIGINS
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_allow_origins,
+        allow_methods=settings.CORS_ALLOW_METHODS,
+        allow_headers=settings.CORS_ALLOW_HEADERS,
+        allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    )
 
-    # Add trusted host middleware in production
-    if settings.ENVIRONMENT == "production":
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        PerformanceMonitoringMiddleware,
+        slow_request_threshold_ms=settings.PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS,
+    )
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(
+        RateLimitingMiddleware,
+        requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
+        exempt_paths=settings.RATE_LIMIT_EXEMPT_PATHS,
+    )
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
-    
+
     # Register error handlers
     register_error_handlers(app)
 
@@ -90,4 +110,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+
+    logger.info("Health check invoked", extra={"route": "health"})
     return {"status": "healthy"}

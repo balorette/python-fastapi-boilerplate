@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.api.dependencies import get_user_service
+from app.api.dependencies import get_db_session, get_user_service
 from app.core.database import get_async_db
 from app.core.security import get_password_hash
 from app.models.base import Base
@@ -82,6 +82,11 @@ async def client_with_db(async_db_session: AsyncSession):
     # Override dependencies
     app.dependency_overrides[get_async_db] = lambda: async_db_session
     app.dependency_overrides[get_user_service] = lambda: UserService(async_db_session)
+    
+    async def _override_get_db_session():
+        return async_db_session
+
+    app.dependency_overrides[get_db_session] = _override_get_db_session
     
     with TestClient(app) as test_client:
         yield test_client

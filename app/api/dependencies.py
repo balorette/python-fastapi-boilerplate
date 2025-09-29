@@ -1,10 +1,12 @@
 """API dependencies."""
 
+from collections.abc import AsyncGenerator
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_db
+from app.core.database import get_async_db, get_async_db_context
 from app.core.exceptions import AuthenticationError
 from app.core.security import verify_token
 from app.models.user import User
@@ -81,3 +83,10 @@ async def get_user_service(
 ) -> UserService:
     """Get UserService instance with database session."""
     return UserService(session)
+
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Provide an async SQLAlchemy session for request-scoped dependencies."""
+
+    async with get_async_db_context() as session:
+        yield session
