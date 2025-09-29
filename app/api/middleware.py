@@ -20,17 +20,30 @@ logger = logging.getLogger("app.middleware")
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Attach correlation IDs, timing metadata, and structured logs to requests."""
 
+    def __init__(
+        self,
+        app,
+        *,
+        correlation_header_name: str = "X-Correlation-ID",
+        process_time_header_name: str = "X-Process-Time",
+    ) -> None:
+        super().__init__(app)
+        self._correlation_header_name = correlation_header_name
+        self._process_time_header_name = process_time_header_name
+
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
         """Log incoming requests, record execution time, and enrich responses."""
 
         correlation_id = str(uuid.uuid4())
         request.state.request_id = correlation_id
+        request.state.correlation_id = correlation_id
 
         start_time = time.perf_counter()
         logger.info(
             "Request started",
             extra={
                 "correlation_id": correlation_id,
+                "request_id": correlation_id,
                 "method": request.method,
                 "url": str(request.url),
                 "client_ip": request.client.host if request.client else "unknown",
@@ -45,6 +58,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "Request failed",
                 extra={
                     "correlation_id": correlation_id,
+                    "request_id": correlation_id,
                     "method": request.method,
                     "url": str(request.url),
                     "process_time_ms": round(process_time_ms, 2),
@@ -59,6 +73,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             "Request completed",
             extra={
                 "correlation_id": correlation_id,
+                "request_id": correlation_id,
                 "method": request.method,
                 "url": str(request.url),
                 "status_code": response.status_code,
@@ -66,8 +81,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             },
         )
 
-        response.headers["X-Correlation-ID"] = correlation_id
-        response.headers["X-Process-Time"] = f"{process_time_ms:.2f}"
+        if self._correlation_header_name:
+            response.headers[self._correlation_header_name] = correlation_id
+        if self._process_time_header_name:
+            response.headers[self._process_time_header_name] = f"{process_time_ms:.2f}"
         return response
 
 

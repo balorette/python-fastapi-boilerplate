@@ -4,6 +4,23 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-08 - Phase 1 Observability Kickoff
+**Context**: Phase 1 requires production-ready observability. Logging middleware lacked regression coverage for correlation IDs,
+and the Prometheus toggle had no implementation. Health checks also needed negative-case tests before we could rely on them in
+automation.
+
+**Actions**:
+- Added configuration toggles for security headers, performance monitoring, request logging, and metrics so operators can
+  explicitly enable/disable middleware per environment. Default headers can now be renamed via settings for downstream
+  contracts.
+- Implemented an optional `/metrics` endpoint wired to `prometheus-client` and documented the observability payloads in
+  `docs/deployment.md` for rollout teams.
+- Extended the middleware/health test suites to assert correlation IDs in structured logs, ensure configuration degradations are
+  surfaced, and verify readiness returns `503` on database failures.
+
+**Outcome**: The project now has guard rails around the structured logging pipeline, configuration toggles, and health probes,
+closing the first slice of Phase 1 observability work.
+
 ## 2025-10-07 - Status Refresh & Test Baseline Audit
 **Context**: Post-OAuth integration, the project regained the bulk of its integration coverage but remained unclear about the latest regression status. We ran `uv run pytest` to capture a fresh baseline and realigned documentation/todo files with the findings.
 

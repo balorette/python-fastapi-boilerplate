@@ -30,6 +30,26 @@ class Settings(BaseSettings):
     AUDIT_LOG_ENABLED: bool = Field(default=True, description="Emit audit/compliance logs")
     SAFETY_CHECKS_ENABLED: bool = Field(default=True, description="Enable safety guardrails")
     PROMETHEUS_METRICS_ENABLED: bool = Field(default=False, description="Expose Prometheus metrics endpoint")
+    REQUEST_LOGGING_ENABLED: bool = Field(
+        default=True,
+        description="Enable structured request logging middleware",
+    )
+    PERFORMANCE_MONITORING_ENABLED: bool = Field(
+        default=True,
+        description="Enable latency monitoring middleware",
+    )
+    SECURITY_HEADERS_ENABLED: bool = Field(
+        default=True,
+        description="Attach baseline security headers to responses",
+    )
+    REQUEST_ID_HEADER_NAME: str = Field(
+        default="X-Correlation-ID",
+        description="Response header used to expose request correlation IDs",
+    )
+    PROCESS_TIME_HEADER_NAME: str = Field(
+        default="X-Process-Time",
+        description="Response header used to expose request latency in milliseconds",
+    )
 
     # API configuration
     API_V1_STR: str = Field(default="/api/v1", description="Versioned API prefix")
