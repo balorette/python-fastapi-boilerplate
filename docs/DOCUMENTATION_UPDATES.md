@@ -1,5 +1,13 @@
 # 📋 Documentation and Configuration Updates Summary
 
+## 2025-10-07 — Project Status Refresh
+- Ran `uv run pytest` to capture the current baseline (168 passed / 5 failed / 173 total) and documented the failing OAuth login suites.
+- Updated `docs/ai/improvement-plan.md` with an accurate current-state assessment, refreshed roadmap, and tactical focus areas.
+- Revised `docs/todo.md` to include a status snapshot, explicit remediation tasks for failing tests, and new documentation/CI follow-ups.
+- Logged the status check and resulting documentation changes in `docs/ai/actions.md` for traceability.
+
+---
+
 ## ✅ Files Updated for OAuth Integration
 
 ### 🔧 **Configuration Files**

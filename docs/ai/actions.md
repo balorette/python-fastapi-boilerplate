@@ -1,8 +1,24 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.0.0  
-**Created**: 2025-01-25  
+**Document Version**: 1.1.0
+**Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-07 - Status Refresh & Test Baseline Audit
+**Context**: Post-OAuth integration, the project regained the bulk of its integration coverage but remained unclear about the latest regression status. We ran `uv run pytest` to capture a fresh baseline and realigned documentation/todo files with the findings.
+
+**Actions**:
+- Executed the full test suite with coverage (`uv run pytest`), confirming 168 passing tests and surfacing five failures isolated to OAuth login debug suites that bypass migrations (`no such table: users`).
+- Recorded actionable coverage gaps (auth endpoints, database helpers, CLI) and deprecation warnings (Pydantic `json_encoders`, `datetime.utcnow()`) for follow-up.
+- Updated `docs/ai/improvement-plan.md` to reflect the current strengths, outstanding risks, and refreshed roadmap sequencing.
+- Revised `docs/todo.md` with a status snapshot, explicit remediation tasks for the failing suites, and new documentation/CI follow-ups.
+
+**Outcome**: Documentation now mirrors the present state of the codebase, highlighting the exact failing tests, coverage targets, and next operational steps. Contributors can prioritise SQLite bootstrap fixes, coverage improvements, and warning clean-up before resuming Phase 2 feature work.
+
+**Next Steps**:
+- Patch OAuth regression fixtures to seed temporary databases and unlock the remaining failing tests.
+- Backfill coverage for `app/api/v1/endpoints/auth.py` and `app/core/database.py`.
+- Address the deprecation warnings to prevent future breaking upgrades.
 
 ## 2025-10-05 - Structured Logging & Health Telemetry Adoption
 **Context**: Findings from the Astraeus audit highlighted gaps in structured audit logging, request middleware parity, and operator-grade health reporting. The boilerplate had partial code drops but unresolved imports, missing modules, and outdated tests that still targeted the legacy `/health/detailed` responses.
