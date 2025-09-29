@@ -17,7 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_async_db
-from app.core.exceptions import ValidationError as AppValidationError, AuthenticationError
+from app.core.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    ValidationError as AppValidationError,
+)
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -67,6 +71,11 @@ async def authorize(
                     state=request.state,
                     redirect_uri=request.redirect_uri,
                 )
+            except AuthorizationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=str(exc),
+                ) from exc
             except AuthenticationError as exc:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,6 +111,11 @@ async def authorize(
     except AppValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+    except AuthorizationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc)
         ) from exc
     except AuthenticationError as exc:
@@ -251,6 +265,11 @@ async def token(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc)
         ) from exc
+    except AuthorizationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc)
+        ) from exc
     except AuthenticationError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -280,6 +299,11 @@ async def local_login(
 
         try:
             return await auth_service.login_local(request)
+        except AuthorizationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(exc),
+            ) from exc
         except AuthenticationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

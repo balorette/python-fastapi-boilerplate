@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, DataIntegrityError
 from app.repositories.user import UserRepository
 from app.models.user import User
 from app.core.exceptions import NotFoundError, ConflictError
@@ -148,9 +148,9 @@ class TestBaseRepository:
         user_data = {"username": "existinguser", "email": "existing@example.com"}
         from sqlalchemy.exc import IntegrityError
         mock_session.commit.side_effect = IntegrityError("test", "test", Exception("test"))
-        
+
         # Execute & Assert
-        with pytest.raises(IntegrityError):
+        with pytest.raises(DataIntegrityError):
             await base_repo.create(user_data)
         
         mock_session.rollback.assert_called_once()

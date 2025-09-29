@@ -79,7 +79,16 @@ class Settings(BaseSettings):
     # Middleware tuning
     PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS: float = Field(default=1000.0, description="Slow request threshold in milliseconds")
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(default=60, description="Requests per minute per client")
-    RATE_LIMIT_EXEMPT_PATHS: tuple[str, ...] = Field(default=("/health",), description="Paths exempt from rate limiting")
+    RATE_LIMIT_EXEMPT_PATHS: tuple[str, ...] = Field(
+        default=(
+            "/health",
+            "/api/v1/auth/login",
+            "/api/v1/auth/authorize",
+            "/api/v1/auth/token",
+            "/api/v1/auth/refresh",
+        ),
+        description="Paths exempt from rate limiting",
+    )
 
     # Server configuration
     HOST: str = Field(default="0.0.0.0", description="Server host")

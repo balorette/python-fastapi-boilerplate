@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
     AuthenticationError,
+    AuthorizationError,
     ConflictError,
     NotFoundError,
     ValidationError,
@@ -296,7 +297,7 @@ class UserService:
             raise AuthenticationError("Invalid credentials")
 
         if not user.is_active:
-            raise AuthenticationError("User account is deactivated")
+            raise AuthorizationError("Account is disabled")
 
         return user
 

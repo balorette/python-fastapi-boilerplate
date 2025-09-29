@@ -18,13 +18,15 @@ from app.core.security import (
     get_password_hash
 )
 from app.models.user import User
-from app.repositories.user import UserRepository
 from app.schemas.oauth import (
     AuthorizationRequest,
+    AuthorizationResponse,
     TokenRequest,
+    TokenResponse,
     LocalLoginRequest,
     RefreshTokenRequest
 )
+from app.core.exceptions import AuthenticationError
 
 
 class TestOAuth2Security:
@@ -198,199 +200,185 @@ class TestOAuth2Endpoints:
     
     async def test_authorize_local_success(self):
         """Test successful local authorization."""
-        # Mock user and dependencies
-        mock_user = User(
-            id=1,
-            email="user@example.com",
-            username="testuser",
-            hashed_password=get_password_hash("password123"),
-            full_name="Test User",
-            is_active=True
+
+        auth_response = AuthorizationResponse(
+            authorization_code=create_access_token(
+                {"sub": "1", "email": "user@example.com", "type": "auth_code"}
+            ),
+            authorization_url=None,
+            state="test-state",
+            redirect_uri="http://localhost:3000/callback",
+            code_verifier=None,
         )
-        
-        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo.get_by_email.return_value = mock_user
-            mock_repo_class.return_value = mock_repo
-            
+
+        with patch("app.api.v1.endpoints.auth.AuthService") as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.authorize_local = AsyncMock(return_value=auth_response)
+            mock_service_class.return_value = mock_service
+
             from app.api.v1.endpoints.auth import authorize
-            
+
             request = AuthorizationRequest(
                 provider="local",
                 client_id="test-client",
                 redirect_uri="http://localhost:3000/callback",
                 state="test-state",
                 username="user@example.com",
-                password="password123"
+                password="password123",
             )
-            
+
             mock_db = AsyncMock()
             result = await authorize(request, mock_db)
-            
-            assert result.authorization_code is not None
-            assert result.state == "test-state"
-            assert result.redirect_uri == "http://localhost:3000/callback"
-            
-            # Verify authorization code is valid
-            payload = verify_token(result.authorization_code)
-            assert payload["sub"] == "1"
-            assert payload["email"] == "user@example.com"
-            assert payload["type"] == "auth_code"
-    
+
+            mock_service.authorize_local.assert_awaited_once_with(
+                username_or_email="user@example.com",
+                password="password123",
+                state="test-state",
+                redirect_uri="http://localhost:3000/callback",
+            )
+            assert result == auth_response
+
     async def test_authorize_local_invalid_credentials(self):
         """Test local authorization with invalid credentials."""
-        mock_user = User(
-            id=1,
-            email="user@example.com",
-            username="testuser",
-            hashed_password=get_password_hash("different-password"),
-            is_active=True
-        )
-        
-        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo.get_by_email.return_value = mock_user
-            mock_repo_class.return_value = mock_repo
-            
+
+        with patch("app.api.v1.endpoints.auth.AuthService") as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.authorize_local = AsyncMock(side_effect=AuthenticationError("Invalid credentials"))
+            mock_service_class.return_value = mock_service
+
             from app.api.v1.endpoints.auth import authorize
-            
+
             request = AuthorizationRequest(
                 provider="local",
                 client_id="test-client",
                 redirect_uri="http://localhost:3000/callback",
                 state="test-state",
                 username="user@example.com",
-                password="wrong-password"
+                password="wrong-password",
             )
-            
+
             mock_db = AsyncMock()
-            
-            with pytest.raises(Exception):  # Should raise HTTPException
+
+            with pytest.raises(Exception):
                 await authorize(request, mock_db)
-    
+
     async def test_token_exchange_local_success(self):
         """Test successful token exchange for local provider."""
-        # Create a valid authorization code
-        auth_token_data = {
-            "sub": "1",
-            "email": "user@example.com",
-            "type": "auth_code"
-        }
-        auth_code = create_access_token(auth_token_data, expires_delta_minutes=10)
-        
-        mock_user = User(
-            id=1,
+
+        auth_code = create_access_token({"sub": "1", "email": "user@example.com", "type": "auth_code"})
+        token_response = TokenResponse(
+            access_token=create_access_token(
+                {
+                    "sub": "1",
+                    "email": "user@example.com",
+                    "name": "Test User",
+                    "provider": "local",
+                }
+            ),
+            token_type="Bearer",
+            expires_in=3600,
+            refresh_token=create_refresh_token(1),
+            scope="openid email profile",
+            user_id=1,
             email="user@example.com",
             username="testuser",
-            full_name="Test User",
-            is_active=True
+            is_new_user=False,
         )
-        
-        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo.get.return_value = mock_user
-            mock_repo_class.return_value = mock_repo
-            
+
+        with patch("app.api.v1.endpoints.auth.AuthService") as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.exchange_local_authorization_code = AsyncMock(return_value=token_response)
+            mock_service_class.return_value = mock_service
+
             from app.api.v1.endpoints.auth import token
-            
+
             request = TokenRequest(
                 provider="local",
                 grant_type="authorization_code",
                 code=auth_code,
                 redirect_uri="http://localhost:3000/callback",
-                client_id="test-client"
+                client_id="test-client",
             )
-            
+
             mock_db = AsyncMock()
             result = await token(request, mock_db)
-            
-            assert result.access_token is not None
-            assert result.refresh_token is not None
-            assert result.token_type == "Bearer"
-            assert result.expires_in > 0
-            assert result.scope == "openid email profile"
-            
-            # Verify access token contains correct claims
-            access_payload = verify_token(result.access_token)
-            assert access_payload["sub"] == "1"
-            assert access_payload["email"] == "user@example.com"
-            assert access_payload["name"] == "Test User"
-            assert access_payload["provider"] == "local"
-            assert access_payload["token_type"] == "access_token"
-            
-            # Verify refresh token
-            refresh_payload = verify_token(result.refresh_token, "refresh_token")
-            assert refresh_payload["sub"] == "1"
-            assert refresh_payload["token_type"] == "refresh_token"
-    
+
+            mock_service.exchange_local_authorization_code.assert_awaited_once_with(auth_code)
+            assert result == token_response
+
     async def test_local_login_success(self):
         """Test successful local login."""
-        mock_user = User(
-            id=1,
+
+        token_response = TokenResponse(
+            access_token=create_access_token(
+                {
+                    "sub": "1",
+                    "email": "user@example.com",
+                    "name": "Test User",
+                    "provider": "local",
+                }
+            ),
+            token_type="Bearer",
+            expires_in=3600,
+            refresh_token=create_refresh_token(1),
+            scope="openid email profile",
+            user_id=1,
             email="user@example.com",
             username="testuser",
-            hashed_password=get_password_hash("password123"),
-            full_name="Test User",
-            is_active=True
+            is_new_user=False,
         )
-        
-        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo.get_by_email.return_value = mock_user
-            mock_repo.update.return_value = mock_user
-            mock_repo_class.return_value = mock_repo
-            
+
+        with patch("app.api.v1.endpoints.auth.AuthService") as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.login_local = AsyncMock(return_value=token_response)
+            mock_service_class.return_value = mock_service
+
             from app.api.v1.endpoints.auth import local_login
-            
-            request = LocalLoginRequest(
-                email="user@example.com",
-                password="password123"
-            )
-            
+
+            request = LocalLoginRequest(email="user@example.com", password="password123")
+
             mock_db = AsyncMock()
             result = await local_login(request, mock_db)
-            
-            assert result.access_token is not None
-            assert result.refresh_token is not None
-            assert result.token_type == "Bearer"
-            
-            # Verify update was called for last_login
-            mock_repo.update.assert_called_once()
-    
+
+            mock_service.login_local.assert_awaited_once_with(request)
+            assert result == token_response
+
     async def test_refresh_token_success(self):
         """Test successful token refresh."""
-        # Create a valid refresh token
-        user_id = 1
-        refresh_token = create_refresh_token(user_id)
-        
-        mock_user = User(
-            id=1,
+
+        token_response = TokenResponse(
+            access_token=create_access_token(
+                {
+                    "sub": "1",
+                    "email": "user@example.com",
+                    "name": "Test User",
+                    "provider": "local",
+                }
+            ),
+            token_type="Bearer",
+            expires_in=3600,
+            refresh_token=create_refresh_token(1),
+            scope="openid email profile",
+            user_id=1,
             email="user@example.com",
             username="testuser",
-            full_name="Test User",
-            is_active=True
+            is_new_user=False,
         )
-        
-        with patch('app.api.v1.endpoints.auth.UserRepository') as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo.get.return_value = mock_user
-            mock_repo_class.return_value = mock_repo
-            
+
+        with patch("app.api.v1.endpoints.auth.AuthService") as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.refresh_tokens = AsyncMock(return_value=token_response)
+            mock_service_class.return_value = mock_service
+
             from app.api.v1.endpoints.auth import refresh_token_endpoint
-            
-            request = RefreshTokenRequest(refresh_token=refresh_token)
-            
+
+            request = RefreshTokenRequest(refresh_token=create_refresh_token(1))
+
             mock_db = AsyncMock()
             result = await refresh_token_endpoint(request, mock_db)
-            
-            assert result.access_token is not None
-            assert result.refresh_token is not None
-            assert result.token_type == "Bearer"
-            
-            # Verify new access token
-            access_payload = verify_token(result.access_token)
-            assert access_payload["sub"] == "1"
-            assert access_payload["token_type"] == "access_token"
+
+            mock_service.refresh_tokens.assert_awaited_once_with(request.refresh_token)
+            assert result == token_response
     
     async def test_get_oauth_providers(self):
         """Test OAuth providers endpoint."""

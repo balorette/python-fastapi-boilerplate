@@ -8,7 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from sqlalchemy import Result
 
-from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.models.user import User
 from app.schemas.oauth import GoogleUserInfo, OAuthUserCreate
 from app.schemas.pagination import DateRangeParams, PaginatedResponse, PaginationParams, SearchParams
@@ -779,7 +785,7 @@ class TestUserService:
         
         with patch.object(user_service, '_verify_password', return_value=True):
             # Execute & Assert
-            with pytest.raises(AuthenticationError, match="User account is deactivated"):
+            with pytest.raises(AuthorizationError, match="Account is disabled"):
                 await user_service.authenticate_user("testuser", "testpass123")
     
     # Test update_password method

@@ -62,6 +62,12 @@ class SafetyAuditFilter(logging.Filter):
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401 - inherited documentation
+        preflag = getattr(record, "safety_critical", None)
+
+        if preflag is True:
+            record.safety_critical = True
+            return True
+
         message = record.getMessage().lower()
         is_safety_critical = any(keyword in message for keyword in self.SAFETY_KEYWORDS)
 
