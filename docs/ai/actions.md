@@ -14,6 +14,16 @@
 
 **Outcome**: The boilerplate now mirrors the Astraeus observability model—structured logs route through rotating JSON handlers with compliance metadata, middleware adds correlation/latency/rate limiting, and the health suite surfaces actionable subsystem status without import errors. The updated tests cover the richer endpoints to prevent regression.
 
+## 2025-10-06 - Roadmap Reset & To-do Consolidation
+**Context**: After merging the enterprise repository abstraction, the existing to-do list no longer reflected the remaining work for observability, auth hardening, or developer experience. We needed a succinct plan that keeps the boilerplate approachable while highlighting enterprise-grade requirements.
+
+**Actions**:
+- Archived completed Phase 1 deliverables in `docs/todo-completed.md` for historical traceability.
+- Rewrote `docs/todo.md` with five focused workstreams (observability, repository/service cohesion, auth hardening, testing/tooling, developer experience) and actionable sub-tasks.
+- Ensured backlog clearly calls out deferred secrets management and references the completed log for context.
+
+**Outcome**: Contributors now have an up-to-date, implementation-ready backlog that aligns with the unified architecture and keeps the boilerplate clean, modular, and enterprise friendly.
+
 ## 2025-09-29 - Phase 1 Section 2 Service Coverage & Auth Consolidation
 **Context**: Phase 1 Section 2 targeted the remaining service-layer coverage gaps and called for a dedicated authentication service. The todo list also flagged Ruff migration and configuration validation follow-ups in Sections 3 and 4.
 
