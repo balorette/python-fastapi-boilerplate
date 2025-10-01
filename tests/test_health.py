@@ -30,6 +30,31 @@ def test_health_summary_exposes_compliance_checks(client_with_db):
     datetime.fromisoformat(payload["timestamp"])  # raises ValueError if invalid
 
 
+def test_health_summary_includes_process_when_debug(monkeypatch, client_with_db):
+    """Process metadata is only included for debugging scenarios."""
+
+    monkeypatch.setattr(settings, "DEBUG", True)
+
+    response = client_with_db.get("/api/v1/health")
+    assert response.status_code == 200
+
+    system_check = response.json()["checks"]["system"]
+    assert "process" in system_check
+    assert "pid" not in system_check.get("process", {})
+
+
+def test_health_summary_hides_process_details_when_not_debug(monkeypatch, client_with_db):
+    """Process identifiers should be omitted from health payloads by default."""
+
+    monkeypatch.setattr(settings, "DEBUG", False)
+
+    response = client_with_db.get("/api/v1/health")
+    assert response.status_code == 200
+
+    system_check = response.json()["checks"]["system"]
+    assert "process" not in system_check
+
+
 def test_liveness_probe_returns_current_status(client):
     """Liveness probe should answer quickly with a timestamp."""
 
