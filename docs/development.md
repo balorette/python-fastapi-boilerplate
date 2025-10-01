@@ -304,8 +304,15 @@ The project supports both SQLite (for development) and PostgreSQL (for productio
 **Model Development**
 ```python
 # app/models/example.py
+from datetime import datetime, timezone
+
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from app.models.base import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 class Example(Base):
     __tablename__ = "examples"
@@ -313,7 +320,7 @@ class Example(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, index=True)  # Add indexes for queries
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     
     # Add constraints and indexes as needed
     __table_args__ = (
@@ -339,15 +346,22 @@ alembic upgrade head  # Apply again
 
 ```python
 # app/models/example.py
+from datetime import datetime, timezone
+
 from sqlalchemy import Column, Integer, String, DateTime
 from app.models.base import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 class Example(Base):
     __tablename__ = "examples"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 ```
 
 #### Creating Migrations

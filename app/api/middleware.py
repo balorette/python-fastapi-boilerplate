@@ -12,6 +12,7 @@ from typing import Callable, Iterable
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+import anyio
 
 
 logger = logging.getLogger("app.middleware")
@@ -162,7 +163,10 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.requests_per_minute = max(1, int(requests_per_minute))
         self.exempt_paths = {path.rstrip("/") for path in (exempt_paths or [])}
-        self._lock = asyncio.Lock()
+        # Use an anyio lock so it binds to the currently running loop/backend.
+        # This avoids "Event loop is closed" errors when the ASGI app is driven
+        # by short-lived event loops (e.g. pytest's TestClient per test case).
+        self._lock = anyio.Lock()
         self._requests: dict[str, dict[int, int]] = defaultdict(dict)
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:

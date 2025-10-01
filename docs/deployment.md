@@ -49,6 +49,10 @@ Every HTTP response includes the structured logging headers when `REQUEST_LOGGIN
 - `${REQUEST_ID_HEADER_NAME}` (default `X-Correlation-ID`) exposes the correlation ID that also appears in structured logs.
 - `${PROCESS_TIME_HEADER_NAME}` (default `X-Process-Time`) reports request latency in milliseconds.
 
+Structured JSON logs are emitted in UTC (`timestamp` ends with `Z`) and always include the same correlation identifiers
+surfaced via the response headers. This makes it easy to correlate application traces with ingress controller logs or
+downstream job processors regardless of the deployment region.
+
 You can adjust these toggles in `.env.production` or other environment files:
 
 ```env

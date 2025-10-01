@@ -1,7 +1,7 @@
 # System Architecture - FastAPI Enterprise Baseline
 
-**Document Version**: 1.0.0  
-**Last Updated**: 2025-01-25  
+**Document Version**: 1.0.1  
+**Last Updated**: 2025-10-08  
 **Status**: Living Document
 
 ## Architecture Overview
@@ -65,6 +65,7 @@ Each layer has a single, well-defined responsibility:
 ```python
 app/api/
 ├── dependencies.py  # Shared dependencies
+├── middleware.py     # Request logging, perf monitor, rate limiting
 ├── v1/
 │   ├── api.py      # Router aggregation
 │   └── endpoints/  # Endpoint modules
@@ -153,6 +154,37 @@ app/schemas/     # Pydantic schemas
 - Active Record pattern (SQLAlchemy)
 - Data Transfer Objects (Pydantic)
 - Schema versioning for API evolution
+- Datetime normalization with timezone-aware helpers (`datetime.now(UTC)`, wrapped serializers)
+
+## Observability Architecture
+
+### Logging Pipeline
+
+- `app/core/logging.py` configures structured JSON logging for console and rotating file handlers.
+- Timestamps are generated via a shared `_iso_utc_timestamp()` helper that always emits ISO-8601 strings ending in `Z`.
+- Logs include correlation IDs, request IDs, user IDs, and compliance metadata, making it easy to join with ingress/trace logs.
+
+### Middleware Stack
+
+Order of execution (inside out):
+
+1. **SecurityHeadersMiddleware** – Ensures baseline security headers exist on every response.
+2. **PerformanceMonitoringMiddleware** – Emits warnings when response time exceeds configured thresholds.
+3. **RequestLoggingMiddleware** – Generates per-request correlation IDs and latency metrics, propagating them to structured logs and headers (`X-Correlation-ID`, `X-Process-Time`).
+4. **RateLimitingMiddleware** – Provides a lightweight in-memory throttle for local/staging environments. Uses `anyio.Lock()` to stay compatible with per-test event loops (prevents `Event loop is closed`).
+
+Each middleware can be toggled or configured through `app/core/config.Settings` fields so production environments can fine-tune observability without redeploying code.
+
+### Health & Metrics
+
+- `/api/v1/health`, `/api/v1/health/liveness`, and `/api/v1/health/readiness` share the same structured payload schema from `app/core/health.py` and surface degraded subsystems.
+- When `PROMETHEUS_METRICS_ENABLED=true`, `app/api/routes/metrics.py` mounts `/metrics` with Prometheus-formatted scraped data.
+- All probes leverage the same UTC timestamp conventions as the logging pipeline for consistent dashboards.
+
+### Test & Documentation Alignment
+
+- `tests/test_logging.py`, `tests/test_health.py`, and the new auth regression suites (`tests/test_auth_endpoints_extended.py`) assert the middleware outputs and structured payloads.
+- `docs/deployment.md` captures the observability toggles and logging behaviour so operators can configure production clusters without inspecting source code.
 
 ## Core Design Patterns
 

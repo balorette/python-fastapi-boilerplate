@@ -1,6 +1,6 @@
 """Shared Pydantic helpers used by the boilerplate application."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,9 +18,6 @@ class BaseSchema(BaseModel):
         use_enum_values=True,
         validate_assignment=True,
         arbitrary_types_allowed=True,
-        json_encoders={
-            datetime: lambda value: value.isoformat() if value else None,
-        },
     )
 
 
@@ -80,7 +77,7 @@ class ErrorResponse(BaseSchema):
         description="Optional context about the error",
     )
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Timestamp when the error was generated",
     )
     request_id: Optional[str] = Field(
@@ -124,6 +121,10 @@ class FilterParams(BaseSchema):
 
         if value is None:
             return value
-        if value > datetime.utcnow():
+
+        reference = datetime.now(UTC)
+        candidate = value if value.tzinfo else value.replace(tzinfo=UTC)
+
+        if candidate > reference:
             raise ValueError("Filter date cannot be in the future")
-        return value
+        return candidate

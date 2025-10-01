@@ -1,8 +1,27 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.1.0
+**Document Version**: 1.1.1
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-08 - UTC Logging & Serializer Remediation
+**Context**: Phase 1 highlighted lingering deprecation warnings (`datetime.utcnow()`, Pydantic `json_encoders`) that polluted the
+test output—particularly once the Postgres harness replaced SQLite. We also needed a single source of truth in the docs for the
+new observability defaults.
+
+**Actions**:
+- Replaced every `datetime.utcnow()` call with timezone-aware helpers (`datetime.now(UTC)`) and normalised logging timestamps via
+  a shared `_iso_utc_timestamp()` helper.
+- Removed deprecated Pydantic `json_encoders`, relying on native serializers and validators to ensure UTC-normalised payloads.
+- Updated the shared base schemas to validate incoming filter dates against `datetime.now(UTC)` while preserving backwards
+  compatibility for naive inputs.
+- Refreshed the documentation backlog (`docs/todo.md`, `docs/ai/improvement-plan.md`, `docs/deployment.md`, `docs/fastapi-best-practices.md`,
+  and `docs/development.md`) with the new logging behaviour and serializer guidance; logged the change in this action register.
+- Confirmed a clean `pytest --cov=app` run (185 passed / 0 failed) with the Postgres-backed harness to prove the warnings are gone.
+
+**Outcome**: The build is warning-free with timezone-aware logs, modern Pydantic serializers, and documentation that matches the
+current behaviour. This closes the lingering deprecation item on the Phase 1 checklist and unblocks teams that need deterministic
+UTC timestamps for compliance.
 
 ## 2025-10-08 - Phase 1 Observability Kickoff
 **Context**: Phase 1 requires production-ready observability. Logging middleware lacked regression coverage for correlation IDs,
@@ -696,6 +715,6 @@ Following CLAUDE.md requirements, updated all relevant documentation:
 ---
 
 **Document Status**: Active - Updated with each significant change  
-**Last Major Update**: 2025-01-25 - Ruff Migration and Documentation Updates  
-**Next Update**: After remaining Phase 1 test suite completion  
+**Last Major Update**: 2025-10-08 - UTC Logging & Serializer Remediation  
+**Next Update**: After OAuth fixture hardening and coverage uplift  
 **Review Schedule**: Daily during active development

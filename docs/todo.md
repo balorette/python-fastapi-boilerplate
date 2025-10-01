@@ -1,12 +1,12 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.1.0
-**Last Updated**: 2025-10-07
+**Document Version**: 2.1.1
+**Last Updated**: 2025-10-08
 
-> **Status Snapshot (2025-10-07)**
-> - `uv run pytest` → **168 passed / 5 failed / 173 total** (OAuth login debug suites hit `no such table: users`).
+> **Status Snapshot (2025-10-08)**
+> - `uv run pytest` → **185 passed / 0 failed / 185 total**.
 > - Coverage: **72%** — focus improvements on `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities.
-> - Deprecation warnings: `datetime.utcnow()` and Pydantic `json_encoders` need remediation.
+> - Deprecation warnings resolved: logging now emits timezone-aware timestamps and Pydantic serializers no longer rely on deprecated `json_encoders`.
 
 The following backlog keeps the boilerplate modular, production-ready, and easy for new teams to adopt. Each section calls out the concrete steps required for completion.
 
@@ -32,7 +32,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [ ] Restore `uv run pytest` to green by addressing remaining OAuth/auth integration failures and flaky fixtures.
 - [ ] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow.
 - [ ] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
-- [ ] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
+- [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
 
 ## 5. Documentation & Developer Experience (In Progress)
 - [ ] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.

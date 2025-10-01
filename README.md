@@ -14,7 +14,7 @@ A modern, production-ready FastAPI REST API.
 - **Code Quality**: Modern tooling with Ruff (linting, formatting, import sorting) and pre-commit hooks
 - **Docker**: Multi-stage Docker builds and docker-compose for development
 - **Documentation**: Automatic API documentation with Swagger/OpenAPI
-- **Monitoring**: Structured logging with configurable levels
+- **Observability**: Structured JSON logging with UTC timestamps, correlation IDs, Prometheus metrics toggle
 - **Security**: Built-in security best practices and CORS handling
 
 ## 📋 Requirements
@@ -205,8 +205,10 @@ pytest tests/test_users.py -v
 
 ### Run with coverage:
 ```bash
-pytest --cov=app --cov-report=html
+uv run pytest --cov=app --cov-report=html
 ```
+
+Current baseline: `uv run pytest --cov=app` → **185 passed / 0 failed** with coverage holding at ~72% (focus areas: `app/api/v1/endpoints/auth.py`, `app/core/database.py`, CLI helpers).
 
 ### �️ Additional Database Management
 
@@ -372,10 +374,10 @@ BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
 
 ## 📊 Monitoring and Logging
 
-- Structured logging with configurable levels
-- Health check endpoints
-- Request/response logging
-- Error tracking and reporting
+- Structured JSON logging with UTC timestamps, correlation IDs, and request metadata (see `app/core/logging.py`)
+- Health endpoints (`/api/v1/health`, `/liveness`, `/readiness`) return JSON payloads suitable for probes and dashboards
+- Request logging, latency headers, and local rate limiting are configurable via environment toggles (see `docs/deployment.md`)
+- Optional Prometheus `/metrics` endpoint is available when `PROMETHEUS_METRICS_ENABLED=true`
 
 ## 🤝 Contributing
 

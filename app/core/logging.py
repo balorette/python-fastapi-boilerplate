@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import logging.config
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -19,6 +19,12 @@ HANDLER_AUDIT_JSON = "audit_json"
 HANDLER_ERROR_JSON = "error_json"
 
 
+def _iso_utc_timestamp() -> str:
+    """Return an ISO 8601 timestamp with a trailing Z."""
+
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
 class StructuredLogFormatter(jsonlogger.JsonFormatter):
     """JSON formatter that injects compliance metadata into each record."""
 
@@ -31,7 +37,7 @@ class StructuredLogFormatter(jsonlogger.JsonFormatter):
         super().add_fields(log_record, record, message_dict)
 
         if "timestamp" not in log_record:
-            log_record["timestamp"] = datetime.utcnow().isoformat() + "Z"
+            log_record["timestamp"] = _iso_utc_timestamp()
 
         log_record.setdefault("service", settings.SERVICE_NAME)
 
@@ -227,7 +233,7 @@ def log_safety_event(
         "safety_critical": True,
         "compliance_event": True,
         "event_type": event_type,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": _iso_utc_timestamp(),
         **kwargs,
     }
 
@@ -255,7 +261,7 @@ def log_audit_event(
         "resource_id": resource_id,
         "user_id": user_id,
         "success": success,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": _iso_utc_timestamp(),
         **kwargs,
     }
 

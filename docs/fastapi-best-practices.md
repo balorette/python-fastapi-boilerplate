@@ -225,31 +225,24 @@ class UserBase(BaseModel):
 ### Custom Base Model
 Having a controllable global base model allows us to customize all the models within the app. For instance, we can enforce a standard datetime format or introduce a common method for all subclasses of the base model.
 ```python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
 
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, ConfigDict
-
-
-def datetime_to_gmt_str(dt: datetime) -> str:
-    if not dt.tzinfo:
-        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
-
-    return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+from pydantic import BaseModel, ConfigDict, model_serializer
 
 
 class CustomModel(BaseModel):
-    model_config = ConfigDict(
-        json_encoders={datetime: datetime_to_gmt_str},
-        populate_by_name=True,
-    )
+    """Project-wide base model that normalises datetime serialization."""
 
-    def serializable_dict(self, **kwargs):
-        """Return a dict which contains only serializable fields."""
-        default_dict = self.model_dump()
+    model_config = ConfigDict(populate_by_name=True)
 
-        return jsonable_encoder(default_dict)
+    @model_serializer(mode="wrap")
+    def _serialize_datetimes(self, handler):
+        payload = handler(self)
+        for key, value in payload.items():
+            if isinstance(value, datetime):
+                aware = value if value.tzinfo else value.replace(tzinfo=UTC)
+                payload[key] = aware.isoformat().replace("+00:00", "Z")
+        return payload
 
 
 ```
@@ -813,4 +806,3 @@ ruff format src
 [lowercase00](https://github.com/zhanymkanov/fastapi-best-practices/issues/4) 
 has described in details their best practices working with permissions & auth, class-based services & views, 
 task queues, custom response serializers, configuration with dynaconf, etc.  
-

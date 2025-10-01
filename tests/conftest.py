@@ -101,10 +101,9 @@ async def client_with_db(async_db_session: AsyncSession):
 
 
 @pytest.fixture
-def client():
-    """Create simple test client for basic API tests."""
-    with TestClient(app) as test_client:
-        yield test_client
+def client(client_with_db: TestClient):
+    """Default test client that reuses the DB-aware fixture overrides."""
+    return client_with_db
 
 
 @pytest.fixture
