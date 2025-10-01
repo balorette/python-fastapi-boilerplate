@@ -108,6 +108,8 @@ async def authorize(
                 code_verifier=None
             )
 
+    except HTTPException:
+        raise
     except AppValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
