@@ -32,7 +32,6 @@ class UserService:
     """Enhanced user service with comprehensive business logic."""
 
     def __init__(self, session: AsyncSession):
-        self.session = session
         self.repository = UserRepository(session)
 
     def _hash_password(self, password: str) -> str:
@@ -52,7 +51,7 @@ class UserService:
         """Ensure the generated username is unique, appending a suffix if needed."""
         candidate = seed
         suffix = 1
-        while await self.repository.username_exists(candidate):
+        while await self.repository.exists(field_name="username", field_value=candidate):
             candidate = f"{seed}{suffix}"
             suffix += 1
         return candidate
@@ -60,11 +59,11 @@ class UserService:
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with validation."""
         # Check if email already exists
-        if await self.repository.email_exists(user_data.email):
+        if await self.repository.exists(field_name="email", field_value=user_data.email):
             raise ConflictError(f"Email {user_data.email} is already registered")
 
         # Check if username already exists
-        if await self.repository.username_exists(user_data.username):
+        if await self.repository.exists(field_name="username", field_value=user_data.username):
             raise ConflictError(f"Username {user_data.username} is already taken")
 
         # Create user data
@@ -156,14 +155,14 @@ class UserService:
         params: PaginationParams
     ) -> PaginatedResponse[UserResponse]:
         """Get paginated list of active users."""
-        # Count active users
-        total = await self.repository.count_active_users()
+        filters = {"is_active": True}
+        total = await self.repository.count_records(filters)
 
-        # Get active users
-        users = await self.repository.get_active_users(
+        users = await self.repository.get_multi(
             skip=params.skip,
             limit=params.limit,
-            order_by=params.order_by
+            filters=filters,
+            order_by=params.order_by or "-created_at"
         )
 
         # Convert to response schema
@@ -220,12 +219,20 @@ class UserService:
 
         # Validate email uniqueness if being updated
         if 'email' in update_dict:
-            if await self.repository.email_exists(update_dict['email'], exclude_id=user_id):
+            if await self.repository.exists(
+                field_name='email',
+                field_value=update_dict['email'],
+                exclude_id=user_id,
+            ):
                 raise ConflictError(f"Email {update_dict['email']} is already in use")
 
         # Validate username uniqueness if being updated
         if 'username' in update_dict:
-            if await self.repository.username_exists(update_dict['username'], exclude_id=user_id):
+            if await self.repository.exists(
+                field_name='username',
+                field_value=update_dict['username'],
+                exclude_id=user_id,
+            ):
                 raise ConflictError(f"Username {update_dict['username']} is already taken")
 
         try:
@@ -320,10 +327,8 @@ class UserService:
 
         try:
             user = await self.repository.create(user_dict)
-            await self.session.commit()
             return user
         except Exception as e:
-            await self.session.rollback()
             raise ConflictError(f"Failed to create OAuth user: {str(e)}")
 
     async def link_oauth_account(self, user_id: int, oauth_data: OAuthUserCreate) -> User:
@@ -342,10 +347,8 @@ class UserService:
 
         try:
             updated_user = await self.repository.update(user, update_data)
-            await self.session.commit()
             return updated_user
         except Exception as e:
-            await self.session.rollback()
             raise ConflictError(f"Failed to link OAuth account: {str(e)}")
 
     async def get_by_oauth_id(self, oauth_provider: str, oauth_id: str) -> User | None:
@@ -372,10 +375,8 @@ class UserService:
 
             try:
                 updated_user = await self.repository.update(existing_user, update_data)
-                await self.session.commit()
                 return updated_user, False
             except Exception as e:
-                await self.session.rollback()
                 raise ConflictError(f"Failed to update OAuth user: {str(e)}")
 
         # Create OAuth user data
@@ -412,7 +413,7 @@ class UserService:
     async def get_user_stats(self) -> dict[str, int]:
         """Get user statistics."""
         total_users = await self.repository.count_records()
-        active_users = await self.repository.count_active_users()
+        active_users = await self.repository.count_records({'is_active': True})
         inactive_users = total_users - active_users
         superusers = await self.repository.count_records({'is_superuser': True})
 

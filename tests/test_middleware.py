@@ -1,5 +1,7 @@
 """Tests covering the middleware stack configured for the boilerplate app."""
 
+import logging
+
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
@@ -42,6 +44,68 @@ def test_middleware_registration_and_observability_headers():
     assert process_time_header is not None
     assert float(process_time_header) >= 0.0
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
+
+
+def test_request_logging_emits_correlation_id():
+    """Request logging middleware should persist correlation IDs into log records."""
+
+    app_with_logging = create_application()
+
+    class _MemoryHandler(logging.Handler):
+        def __init__(self) -> None:
+            super().__init__()
+            self.records: list[logging.LogRecord] = []
+
+        def emit(self, record: logging.LogRecord) -> None:  # noqa: D401 - simple collector
+            self.records.append(record)
+
+    with TestClient(app_with_logging) as client:
+        handler = _MemoryHandler()
+        middleware_logger = logging.getLogger("app.middleware")
+        middleware_logger.addHandler(handler)
+        try:
+            response = client.get("/api/v1/health/liveness")
+        finally:
+            middleware_logger.removeHandler(handler)
+
+    correlation_id = response.headers.get(settings.REQUEST_ID_HEADER_NAME)
+    assert correlation_id, "Expected correlation header"
+
+    completed_records = [
+        record for record in handler.records if record.getMessage() == "Request completed"
+    ]
+    assert completed_records, "Expected completion log entry"
+    assert any(getattr(record, "request_id", None) == correlation_id for record in completed_records)
+
+
+def test_request_logging_respects_custom_header_names(monkeypatch):
+    """Custom header names from settings should appear in responses."""
+
+    monkeypatch.setattr(settings, "REQUEST_ID_HEADER_NAME", "X-Test-Request-ID")
+    monkeypatch.setattr(settings, "PROCESS_TIME_HEADER_NAME", "X-Test-Duration")
+
+    app_with_logging = create_application()
+    with TestClient(app_with_logging) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    assert "X-Test-Request-ID" in response.headers
+    assert "X-Test-Duration" in response.headers
+
+
+def test_rate_limiting_respects_custom_exempt_paths(monkeypatch):
+    """Exempt paths should bypass rate limiting even under heavy traffic."""
+
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+    monkeypatch.setattr(settings, "RATE_LIMIT_REQUESTS_PER_MINUTE", 1)
+    monkeypatch.setattr(settings, "RATE_LIMIT_EXEMPT_PATHS", ("/api/v1/health/liveness",))
+
+    app_with_limit = create_application()
+    with TestClient(app_with_limit) as client:
+        first = client.get("/api/v1/health/liveness")
+        second = client.get("/api/v1/health/liveness")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
 
 
 def test_rate_limiting_returns_429_for_excessive_requests():

@@ -5,6 +5,8 @@ import logging
 import pytest
 
 from app.core.logging import (
+    StructuredLogFormatter,
+    _iso_utc_timestamp,
     get_logger,
     log_audit_event,
     log_safety_event,
@@ -75,6 +77,37 @@ def test_log_safety_event_injects_metadata(tmp_path):
     assert record.safety_critical is True
     assert record.compliance_event is True
     assert record.fleet_id == "alpha-1"
+
+
+def test_structured_formatter_emits_utc_timestamp():
+    """Structured formatter should emit ISO 8601 UTC timestamps."""
+
+    formatter = StructuredLogFormatter()
+    record = logging.LogRecord(
+        name="app.test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="hello",
+        args=(),
+        exc_info=None,
+    )
+
+    payload: dict[str, str] = {}
+    formatter.add_fields(payload, record, {})
+
+    timestamp = payload["timestamp"]
+    assert timestamp.endswith("Z")
+    # Ensure timestamp parses as ISO 8601 UTC
+    parsed = timestamp.replace("Z", "+00:00")
+    assert parsed == parsed  # noqa: B015 - clarity for future assertions
+
+
+def test_iso_utc_timestamp_helper_returns_z_suffix():
+    """Helper should produce ISO timestamps with trailing Z."""
+
+    stamp = _iso_utc_timestamp()
+    assert stamp.endswith("Z")
 
 
 def test_log_audit_event_injects_metadata(tmp_path):

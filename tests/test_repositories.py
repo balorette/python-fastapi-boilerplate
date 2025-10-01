@@ -117,13 +117,31 @@ class TestBaseRepository:
         mock_result = Mock()
         mock_result.scalar.return_value = 1
         mock_session.execute.return_value = mock_result
-        
+
         # Execute
         exists = await base_repo.record_exists(1)
-        
+
         # Assert
         assert exists is True
         mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_exists_with_field_filters(self, base_repo, mock_session):
+        """Test the generic exists helper with optional exclusions."""
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = 1
+        mock_session.execute.return_value = mock_result
+
+        assert await base_repo.exists(field_name="email", field_value="user@example.com") is True
+
+        mock_session.execute.reset_mock()
+        mock_result.scalar_one_or_none.return_value = None
+        assert await base_repo.exists(
+            field_name="email",
+            field_value="user@example.com",
+            exclude_id=99,
+        ) is False
+        assert mock_session.execute.call_count == 1
     
     @pytest.mark.asyncio
     async def test_create_success(self, base_repo, mock_session):
@@ -242,84 +260,6 @@ class TestUserRepository:
         assert len(result) == 2
         mock_session.execute.assert_called_once()
     
-    @pytest.mark.asyncio
-    async def test_get_active_users(self, user_repo, mock_session):
-        """Test get_active_users method."""
-        # Setup
-        mock_users = [
-            User(id=1, username="user1", email="user1@example.com", is_active=True),
-            User(id=2, username="user2", email="user2@example.com", is_active=True)
-        ]
-        mock_result = Mock()
-        mock_result.scalars.return_value.all.return_value = mock_users
-        mock_session.execute.return_value = mock_result
-        
-        # Execute
-        result = await user_repo.get_active_users(skip=0, limit=10)
-        
-        # Assert
-        assert len(result) == 2
-        mock_session.execute.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_email_exists(self, user_repo, mock_session):
-        """Test email_exists method."""
-        # Setup
-        mock_result = Mock()
-        mock_result.scalar_one_or_none.return_value = 1  # ID found
-        mock_session.execute.return_value = mock_result
-        
-        # Execute
-        exists = await user_repo.email_exists("test@example.com")
-        
-        # Assert
-        assert exists is True
-        mock_session.execute.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_email_exists_with_exclude(self, user_repo, mock_session):
-        """Test email_exists method with user exclusion."""
-        # Setup
-        mock_result = Mock()
-        mock_result.scalar_one_or_none.return_value = None  # No records found when excluding the user
-        mock_session.execute.return_value = mock_result
-        
-        # Execute
-        exists = await user_repo.email_exists("test@example.com", exclude_id=1)
-        
-        # Assert
-        assert exists is False
-        mock_session.execute.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_username_exists(self, user_repo, mock_session):
-        """Test username_exists method."""
-        # Setup
-        mock_result = Mock()
-        mock_result.scalar_one_or_none.return_value = 1  # ID found
-        mock_session.execute.return_value = mock_result
-        
-        # Execute
-        exists = await user_repo.username_exists("testuser")
-        
-        # Assert
-        assert exists is True
-        mock_session.execute.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_count_active_users(self, user_repo, mock_session):
-        """Test count_active_users method."""
-        # Setup
-        mock_result = Mock()
-        mock_result.scalar.return_value = 5
-        mock_session.execute.return_value = mock_result
-        
-        # Execute
-        count = await user_repo.count_active_users()
-        
-        # Assert
-        assert count == 5
-        mock_session.execute.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_get_users_by_creation_date(self, user_repo, mock_session):
