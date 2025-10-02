@@ -304,7 +304,7 @@ ENVIRONMENT=production
 SECRET_KEY=your-super-secret-key
 DATABASE_URL=postgresql://user:password@host:5432/database
 REDIS_URL=redis://host:6379/0
-BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
+CORS_ALLOW_ORIGINS=["https://yourdomain.com"]
 ```
 
 ## 🔐 Authentication & Security

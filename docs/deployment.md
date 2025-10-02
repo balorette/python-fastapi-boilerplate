@@ -24,7 +24,7 @@
    SECRET_KEY=your-super-secret-production-key
    DATABASE_URL=postgresql://user:password@db-host:5432/database
    REDIS_URL=redis://redis-host:6379/0
-   BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
+   CORS_ALLOW_ORIGINS=["https://yourdomain.com"]
    LOG_LEVEL=INFO
    
    # Google OAuth Configuration (required for OAuth features)

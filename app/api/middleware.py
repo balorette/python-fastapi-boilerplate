@@ -140,6 +140,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     clickjacking prevention, and secure content type handling.
     """
 
+    DOCS_PATH_SUFFIXES = {"/docs", "/redoc"}
+    DOCS_SCRIPT_SOURCES = ["'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"]
+    DOCS_STYLE_SOURCES = ["'unsafe-inline'", "https://cdn.jsdelivr.net"]
+
     def __init__(self, app, *, enable_csp: bool = True) -> None:
         super().__init__(app)
         self._enable_csp = enable_csp
@@ -168,19 +172,42 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if self._enable_csp:
             response.headers.setdefault(
                 "Content-Security-Policy",
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-                "style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data: https:; "
-                "font-src 'self' data:; "
-                "connect-src 'self'; "
-                "frame-ancestors 'none'",
+                self._build_csp_header(request),
             )
 
         # Prevent browsers from performing MIME type sniffing
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
         return response
+
+    def _build_csp_header(self, request: Request) -> str:
+        """Construct a CSP value, relaxing rules for FastAPI documentation assets."""
+
+        script_sources = ["'self'"]
+        style_sources = ["'self'"]
+
+        # FastAPI's Swagger UI and ReDoc pull assets from jsDelivr.
+        if self._is_docs_route(request.url.path):
+            script_sources.extend(self.DOCS_SCRIPT_SOURCES)
+            style_sources.extend(self.DOCS_STYLE_SOURCES)
+
+        directives = [
+            "default-src 'self'",
+            f"script-src {' '.join(script_sources)}",
+            f"style-src {' '.join(style_sources)}",
+            "img-src 'self' data: https:",
+            "font-src 'self' data:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+        ]
+
+        return "; ".join(directives)
+
+    def _is_docs_route(self, path: str) -> bool:
+        """Return True when the request targets Swagger UI or ReDoc HTML."""
+
+        normalized = path.rstrip("/") or "/"
+        return any(normalized.endswith(suffix) for suffix in self.DOCS_PATH_SUFFIXES)
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):

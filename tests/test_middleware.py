@@ -46,6 +46,33 @@ def test_middleware_registration_and_observability_headers():
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
 
 
+def test_security_headers_allow_fastapi_docs_assets():
+    """CSP should permit FastAPI's Swagger/ReDoc assets served from jsDelivr."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get(f"{settings.API_V1_STR}/docs")
+
+    csp_header = response.headers.get("Content-Security-Policy")
+    assert csp_header is not None
+    assert "https://cdn.jsdelivr.net" in csp_header
+    assert "'unsafe-inline'" in csp_header
+
+
+def test_security_headers_remain_strict_for_api_routes():
+    """Non-doc routes should receive the hardened CSP without external CDNs."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    csp_header = response.headers.get("Content-Security-Policy")
+    assert csp_header is not None
+    assert "https://cdn.jsdelivr.net" not in csp_header
+    assert "script-src 'self'" in csp_header
+    assert "'unsafe-inline'" not in csp_header
+
+
 def test_request_logging_emits_correlation_id():
     """Request logging middleware should persist correlation IDs into log records."""
 
