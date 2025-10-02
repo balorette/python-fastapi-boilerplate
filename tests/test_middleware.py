@@ -60,6 +60,19 @@ def test_security_headers_allow_fastapi_docs_assets():
     assert "'unsafe-eval'" in csp_header
 
 
+def test_security_headers_allow_oauth_redirect_assets():
+    """OAuth redirect helper should inherit the relaxed CSP needed for inline scripts."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get(f"{settings.API_V1_STR}/docs/oauth2-redirect")
+
+    csp_header = response.headers.get("Content-Security-Policy")
+    assert csp_header is not None
+    assert "https://cdn.jsdelivr.net" in csp_header
+    assert "'unsafe-inline'" in csp_header
+
+
 def test_security_headers_remain_strict_for_api_routes():
     """Non-doc routes should receive the hardened CSP without external CDNs."""
 
@@ -106,6 +119,26 @@ def test_security_headers_omits_csp_when_disabled(monkeypatch):
     assert "Content-Security-Policy" not in response.headers
 
 
+def test_security_headers_include_referrer_policy():
+    """Security middleware should consistently apply the referrer policy header."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+
+
+def test_security_headers_include_x_permitted_cross_domain_policies():
+    """Security headers should disable Flash-style cross-domain policies."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    assert response.headers.get("X-Permitted-Cross-Domain-Policies") == "none"
+
+
 def test_request_logging_emits_correlation_id():
     """Request logging middleware should persist correlation IDs into log records."""
 
@@ -145,11 +178,44 @@ def test_request_logging_respects_custom_header_names(monkeypatch):
     monkeypatch.setattr(settings, "PROCESS_TIME_HEADER_NAME", "X-Test-Duration")
 
     app_with_logging = create_application()
+    allowed_origin = (
+        settings.CORS_ALLOW_ORIGINS[0]
+        if settings.CORS_ALLOW_ORIGINS
+        else "http://localhost:3000"
+    )
     with TestClient(app_with_logging) as client:
-        response = client.get("/api/v1/health/liveness")
+        response = client.get(
+            "/api/v1/health/liveness",
+            headers={"Origin": allowed_origin},
+        )
 
     assert "X-Test-Request-ID" in response.headers
     assert "X-Test-Duration" in response.headers
+    assert (
+        response.headers.get("Access-Control-Expose-Headers")
+        == "X-Test-Request-ID, X-Test-Duration"
+    )
+
+
+def test_cors_expose_headers_reflect_default_settings():
+    """CORS middleware should expose the observability headers configured in settings."""
+
+    app_with_cors = create_application()
+    allowed_origin = (
+        settings.CORS_ALLOW_ORIGINS[0]
+        if settings.CORS_ALLOW_ORIGINS
+        else "http://localhost:3000"
+    )
+    with TestClient(app_with_cors) as client:
+        response = client.get(
+            "/api/v1/health/liveness",
+            headers={"Origin": allowed_origin},
+        )
+
+    expected_headers = ", ".join(
+        [settings.REQUEST_ID_HEADER_NAME, settings.PROCESS_TIME_HEADER_NAME]
+    )
+    assert response.headers.get("Access-Control-Expose-Headers") == expected_headers
 
 
 def test_rate_limiting_respects_custom_exempt_paths(monkeypatch):

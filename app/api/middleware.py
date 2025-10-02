@@ -140,7 +140,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     clickjacking prevention, and secure content type handling.
     """
 
-    DOCS_PATH_SUFFIXES = {"/docs", "/redoc"}
+    DOCS_PATH_SUFFIXES = {"/docs", "/redoc", "/docs/oauth2-redirect"}
     DOCS_SCRIPT_SOURCES = ["'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"]
     DOCS_STYLE_SOURCES = ["'unsafe-inline'", "https://cdn.jsdelivr.net"]
 
@@ -164,9 +164,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Control referrer information
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-
-        # Expose custom headers for clients
-        response.headers.setdefault("Access-Control-Expose-Headers", "X-Correlation-ID, X-Process-Time")
 
         # Content Security Policy for production hardening
         if self._enable_csp:

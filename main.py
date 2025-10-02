@@ -66,6 +66,10 @@ def create_application() -> FastAPI:
         allow_methods=settings.CORS_ALLOW_METHODS,
         allow_headers=settings.CORS_ALLOW_HEADERS,
         allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+        expose_headers=[
+            settings.REQUEST_ID_HEADER_NAME,
+            settings.PROCESS_TIME_HEADER_NAME,
+        ],
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
