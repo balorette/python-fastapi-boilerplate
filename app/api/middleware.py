@@ -134,18 +134,51 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Attach baseline security headers to every HTTP response."""
+    """Attach baseline security headers to every HTTP response.
+
+    Implements OWASP security best practices including CSP, XSS protection,
+    clickjacking prevention, and secure content type handling.
+    """
+
+    def __init__(self, app, *, enable_csp: bool = True) -> None:
+        super().__init__(app)
+        self._enable_csp = enable_csp
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
         """Ensure security best-practice headers are present on responses."""
 
         response = await call_next(request)
 
+        # Prevent MIME-sniffing attacks
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
+
+        # Prevent clickjacking attacks
         response.headers.setdefault("X-Frame-Options", "DENY")
+
+        # Enable XSS protection (legacy browsers)
         response.headers.setdefault("X-XSS-Protection", "1; mode=block")
+
+        # Control referrer information
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+
+        # Expose custom headers for clients
         response.headers.setdefault("Access-Control-Expose-Headers", "X-Correlation-ID, X-Process-Time")
+
+        # Content Security Policy for production hardening
+        if self._enable_csp:
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'",
+            )
+
+        # Prevent browsers from performing MIME type sniffing
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
         return response
 

@@ -35,37 +35,199 @@
 
 ## Observability & Health Endpoints
 
-The boilerplate exposes a small set of probes and headers that operators can rely on during rollouts:
+The boilerplate exposes a comprehensive set of probes and headers that operators can rely on during rollouts:
 
-- `GET /api/v1/health` returns an aggregated payload with `status`, `checks`, `metrics`, and `alerts`. Each check includes a
-  `status` flag so dashboards can highlight degraded subsystems (for example when `AUDIT_LOG_ENABLED=false`).
-- `GET /api/v1/health/liveness` reports process availability, while `GET /api/v1/health/readiness` validates database
-  connectivity and responds with `503` plus an error payload whenever the dependency check fails.
-- When `PROMETHEUS_METRICS_ENABLED=true`, `GET /metrics` serves Prometheus-formatted counters, gauges, and histograms that can
-  be scraped by infrastructure tooling.
+### Health Endpoints
 
-Every HTTP response includes the structured logging headers when `REQUEST_LOGGING_ENABLED=true`:
+#### Aggregate Health Check: `GET /api/v1/health`
 
-- `${REQUEST_ID_HEADER_NAME}` (default `X-Correlation-ID`) exposes the correlation ID that also appears in structured logs.
-- `${PROCESS_TIME_HEADER_NAME}` (default `X-Process-Time`) reports request latency in milliseconds.
+Returns comprehensive health information including database latency, system metrics, and configuration status.
 
-Structured JSON logs are emitted in UTC (`timestamp` ends with `Z`) and always include the same correlation identifiers
-surfaced via the response headers. This makes it easy to correlate application traces with ingress controller logs or
-downstream job processors regardless of the deployment region.
-
-You can adjust these toggles in `.env.production` or other environment files:
-
-```env
-SECURITY_HEADERS_ENABLED=true
-PERFORMANCE_MONITORING_ENABLED=true
-REQUEST_LOGGING_ENABLED=true
-REQUEST_ID_HEADER_NAME=X-Correlation-ID
-PROCESS_TIME_HEADER_NAME=X-Process-Time
-PROMETHEUS_METRICS_ENABLED=false
+**Response (200 OK):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-02T12:00:00.000Z",
+  "version": "0.1.0",
+  "uptime_seconds": 3600,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "response_time_ms": 5.42,
+      "dialect": "postgresql",
+      "driver": "asyncpg"
+    },
+    "system": {
+      "status": "healthy",
+      "cpu_percent": 25.3,
+      "memory_percent": 45.2,
+      "disk_percent": 62.1,
+      "warnings": []
+    },
+    "configuration": {
+      "status": "healthy",
+      "environment": "production",
+      "debug": false,
+      "audit_log_enabled": true,
+      "safety_checks_enabled": true,
+      "prometheus_metrics_enabled": true,
+      "warnings": []
+    },
+    "module": {
+      "status": "healthy",
+      "components": {...},
+      "metrics": {...},
+      "alerts": []
+    }
+  }
+}
 ```
 
-Set the values to `false` if you need to disable specific middleware locally; production environments should keep them enabled
-so observability parity is maintained between clusters and staging.
+**Degraded Response:**
+When subsystems are degraded (e.g., audit logging disabled):
+```json
+{
+  "status": "degraded",
+  "checks": {
+    "configuration": {
+      "status": "degraded",
+      "warnings": ["Audit logging disabled - compliance risk"]
+    }
+  }
+}
+```
+
+#### Liveness Probe: `GET /api/v1/health/liveness`
+
+Simple endpoint to verify the API process is running. Use for Kubernetes liveness probes.
+
+**Response (200 OK):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-02T12:00:00.000Z"
+}
+```
+
+#### Readiness Probe: `GET /api/v1/health/readiness`
+
+Validates database connectivity. Use for Kubernetes readiness probes.
+
+**Success Response (200 OK):**
+```json
+{
+  "status": "ready",
+  "timestamp": "2025-10-02T12:00:00.000Z"
+}
+```
+
+**Failure Response (503 Service Unavailable):**
+```json
+{
+  "detail": {
+    "status": "unhealthy",
+    "error": "database connection failed",
+    "timestamp": "2025-10-02T12:00:00.000Z"
+  }
+}
+```
+
+### Metrics Endpoint
+
+#### Prometheus Metrics: `GET /metrics`
+
+When `PROMETHEUS_METRICS_ENABLED=true`, exposes Prometheus-formatted metrics for scraping.
+
+**Example Response:**
+```
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="12",patchlevel="11",version="3.12.11"} 1.0
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 45.23
+```
+
+### Response Headers
+
+Every HTTP response includes observability headers when `REQUEST_LOGGING_ENABLED=true`:
+
+**Headers:**
+```
+X-Correlation-ID: 550e8400-e29b-41d4-a716-446655440000
+X-Process-Time: 12.34
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+```
+
+- **`X-Correlation-ID`**: Unique request identifier (also appears in structured logs)
+- **`X-Process-Time`**: Request processing time in milliseconds
+- Security headers (CSP, frame options, etc.) when `SECURITY_HEADERS_ENABLED=true`
+
+### Structured Logging
+
+All logs are emitted as JSON in UTC timezone (`timestamp` ends with `Z`):
+
+**Example Log Entry:**
+```json
+{
+  "timestamp": "2025-10-02T12:00:00.000Z",
+  "level": "INFO",
+  "logger": "app.middleware",
+  "message": "Request completed",
+  "correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "method": "GET",
+  "url": "http://localhost:8000/api/v1/users",
+  "status_code": 200,
+  "process_time_ms": 12.34
+}
+```
+
+### Configuration
+
+Adjust observability settings in `.env.production`:
+
+```env
+# Middleware toggles
+SECURITY_HEADERS_ENABLED=true
+SECURITY_CSP_ENABLED=true
+PERFORMANCE_MONITORING_ENABLED=true
+REQUEST_LOGGING_ENABLED=true
+
+# Header names (customize if needed)
+REQUEST_ID_HEADER_NAME=X-Correlation-ID
+PROCESS_TIME_HEADER_NAME=X-Process-Time
+
+# Performance thresholds
+PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS=1000.0
+
+# Metrics
+PROMETHEUS_METRICS_ENABLED=true
+
+# Logging
+LOG_LEVEL=INFO
+LOG_DIRECTORY=logs
+AUDIT_LOG_ENABLED=true
+SAFETY_CHECKS_ENABLED=true
+
+# Rate limiting
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS_PER_MINUTE=100
+```
+
+**Production Recommendations:**
+- Keep all middleware enabled (`*_ENABLED=true`) for maximum observability
+- Set `PROMETHEUS_METRICS_ENABLED=true` for Prometheus/Grafana integration
+- Use `LOG_LEVEL=INFO` in production (avoid `DEBUG` for performance)
+- Ensure `AUDIT_LOG_ENABLED=true` and `SAFETY_CHECKS_ENABLED=true` for compliance
+- Adjust rate limits based on your traffic patterns
+
+**Development/Local:**
+- Can disable CSP (`SECURITY_CSP_ENABLED=false`) if it interferes with local frontend
+- Set `DEBUG=true` and `LOG_LEVEL=DEBUG` for detailed troubleshooting
+- Lower rate limits acceptable for local testing
 
 ### Docker Deployment
 

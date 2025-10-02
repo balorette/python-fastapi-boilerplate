@@ -4,6 +4,68 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-02 - Observability & Metrics Documentation Enhancement
+
+**Context**: Phase 1 Section 1.2 required comprehensive documentation of health/metrics endpoints and payloads. While the implementation was complete (all tests passing), production teams needed concrete examples of response payloads, header formats, and configuration guidance for Kubernetes deployment.
+
+**Actions**:
+- Enhanced `docs/deployment.md` with detailed health endpoint documentation
+- Added real JSON payload examples for `/api/v1/health`, `/liveness`, and `/readiness` endpoints
+- Documented success and failure response formats (200 OK vs 503 Service Unavailable)
+- Included Prometheus metrics endpoint example output when `PROMETHEUS_METRICS_ENABLED=true`
+- Added comprehensive response headers documentation with example correlation IDs and timing data
+- Provided structured logging JSON format example showing UTC timestamps and correlation tracking
+- Created complete environment configuration reference with production vs development recommendations
+- Documented CSP toggle (`SECURITY_CSP_ENABLED`) for frontend compatibility
+
+**Decision**: Provide production-ready documentation with copy-paste examples rather than prose descriptions.
+
+**Rationale**: DevOps teams deploying the API need concrete examples to configure health checks, understand degradation scenarios, and integrate with monitoring systems. JSON payload examples prevent misconfiguration and enable faster Kubernetes/Prometheus integration.
+
+**Impact**:
+- **Deployment**: Teams can configure Kubernetes liveness/readiness probes using documented examples
+- **Monitoring**: Clear Prometheus metrics endpoint documentation enables immediate integration
+- **Debugging**: Structured log format examples help teams configure log aggregation correctly
+- **Coverage**: All 10 health/metrics tests passing, documentation complete for Section 1.2
+
+**Next Steps**:
+- Consider adding Grafana dashboard JSON examples for common metrics
+- Document log aggregation patterns (ELK/Fluentd) with correlation ID queries
+- Add runbook examples for responding to degraded health checks
+
+## 2025-10-02 - Middleware Configuration Hardening
+
+**Context**: Phase 1 Section 1.3 required hardening middleware defaults for production deployment. The existing middleware was functional but had overly permissive defaults (CORS wildcard `["*"]`, low rate limits, missing CSP headers) that could pose security risks in production environments.
+
+**Actions**:
+- Updated CORS defaults from wildcard `["*"]` to specific localhost origins `["http://localhost:3000", "http://localhost:8000"]` for security
+- Explicitly defined allowed HTTP methods (GET, POST, PUT, DELETE, OPTIONS, PATCH) instead of wildcard
+- Restricted CORS headers to essential ones (Content-Type, Authorization, X-Correlation-ID) instead of wildcard
+- Updated TrustedHosts from `["*"]` to `["localhost", "127.0.0.1", "testserver"]` for production safety
+- Increased default rate limiting from 60 req/min to 100 req/min (more production-appropriate)
+- Updated rate limit exempt paths to include all health endpoints (`/api/v1/health`, `/liveness`, `/readiness`, `/metrics`)
+- Enhanced SecurityHeadersMiddleware with Content Security Policy (CSP) headers following OWASP best practices
+- Added configurable CSP toggle (`SECURITY_CSP_ENABLED`) for frontends requiring custom CSP policies
+- Added `X-Permitted-Cross-Domain-Policies: none` header for additional security hardening
+- Comprehensively updated `.env.example` with all observability and middleware configuration options
+- Added inline documentation for all security headers explaining their purpose
+
+**Decision**: Make security defaults restrictive (fail-secure) rather than permissive, requiring explicit configuration for more permissive setups in development.
+
+**Rationale**: Production-first security posture prevents accidental deployment of insecure configurations. Developers can easily relax constraints for local development by updating `.env`, but production deployments remain secure by default. CSP headers provide defense-in-depth against XSS attacks.
+
+**Impact**:
+- **Security**: Eliminates common misconfigurations (CORS wildcards, missing security headers) that cause production vulnerabilities
+- **Observability**: All middleware toggles and observability features now documented in `.env.example` for easy discovery
+- **Developer Experience**: Clear configuration examples with comments explaining security tradeoffs
+- **Test Compatibility**: Added "testserver" to trusted hosts to maintain test suite compatibility
+- **Coverage**: Middleware test suite passes 6/6 tests, full suite remains at 193/194 passing
+
+**Next Steps**:
+- Document production deployment configuration guidelines in `docs/deployment.md`
+- Add environment-specific configuration examples (development vs staging vs production)
+- Consider dynamic CSP policy generation based on frontend origin configuration
+
 ## 2025-10-08 - UTC Logging & Serializer Remediation
 **Context**: Phase 1 highlighted lingering deprecation warnings (`datetime.utcnow()`, Pydantic `json_encoders`) that polluted the
 test output—particularly once the Postgres harness replaced SQLite. We also needed a single source of truth in the docs for the
