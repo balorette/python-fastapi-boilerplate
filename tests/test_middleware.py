@@ -56,7 +56,7 @@ def test_request_logging_emits_correlation_id():
             super().__init__()
             self.records: list[logging.LogRecord] = []
 
-        def emit(self, record: logging.LogRecord) -> None:  # noqa: D401 - simple collector
+        def emit(self, record: logging.LogRecord) -> None:
             self.records.append(record)
 
     with TestClient(app_with_logging) as client:
