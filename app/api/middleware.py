@@ -175,7 +175,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 self._build_csp_header(request),
             )
 
-        # Prevent browsers from performing MIME type sniffing
+        # Control Adobe/Flash cross-domain policy file usage
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
         return response
