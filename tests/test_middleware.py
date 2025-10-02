@@ -57,6 +57,7 @@ def test_security_headers_allow_fastapi_docs_assets():
     assert csp_header is not None
     assert "https://cdn.jsdelivr.net" in csp_header
     assert "'unsafe-inline'" in csp_header
+    assert "'unsafe-eval'" in csp_header
 
 
 def test_security_headers_remain_strict_for_api_routes():
@@ -71,6 +72,38 @@ def test_security_headers_remain_strict_for_api_routes():
     assert "https://cdn.jsdelivr.net" not in csp_header
     assert "script-src 'self'" in csp_header
     assert "'unsafe-inline'" not in csp_header
+
+
+def test_security_headers_default_policy_matches_expected():
+    """Default CSP should match the documented production baseline."""
+
+    app_with_security = create_application()
+    with TestClient(app_with_security) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    expected_policy = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'"
+    )
+
+    assert response.headers.get("Content-Security-Policy") == expected_policy
+
+
+def test_security_headers_omits_csp_when_disabled(monkeypatch):
+    """Disabling the CSP flag should remove the Content-Security-Policy header."""
+
+    monkeypatch.setattr(settings, "SECURITY_CSP_ENABLED", False)
+
+    app_without_csp = create_application()
+    with TestClient(app_without_csp) as client:
+        response = client.get("/api/v1/health/liveness")
+
+    assert "Content-Security-Policy" not in response.headers
 
 
 def test_request_logging_emits_correlation_id():
