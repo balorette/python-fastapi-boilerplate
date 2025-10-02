@@ -10,7 +10,7 @@
 
 **Actions**:
 - Enhanced `docs/deployment.md` with detailed health endpoint documentation
-- Added real JSON payload examples for `/api/v1/health`, `/liveness`, and `/readiness` endpoints
+- Added real JSON payload examples for `/api/v1/health/liveness` and `/api/v1/health/readiness` endpoints
 - Documented success and failure response formats (200 OK vs 503 Service Unavailable)
 - Included Prometheus metrics endpoint example output when `PROMETHEUS_METRICS_ENABLED=true`
 - Added comprehensive response headers documentation with example correlation IDs and timing data
