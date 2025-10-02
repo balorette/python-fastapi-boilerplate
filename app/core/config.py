@@ -1,6 +1,8 @@
 """Application configuration settings."""
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, field_validator
+import json
+
+from pydantic import AliasChoices, AnyHttpUrl, Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +43,10 @@ class Settings(BaseSettings):
     SECURITY_HEADERS_ENABLED: bool = Field(
         default=True,
         description="Attach baseline security headers to responses",
+    )
+    SECURITY_CSP_ENABLED: bool = Field(
+        default=True,
+        description="Enable Content Security Policy headers (may need adjustment for specific frontends)",
     )
     REQUEST_ID_HEADER_NAME: str = Field(
         default="X-Correlation-ID",
@@ -89,25 +95,43 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis URL")
 
     # CORS / security headers
-    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = Field(default_factory=list, description="CORS origins")
-    CORS_ALLOW_ORIGINS: list[str] = Field(default_factory=lambda: ["*"])
-    CORS_ALLOW_METHODS: list[str] = Field(default_factory=lambda: ["*"])
-    CORS_ALLOW_HEADERS: list[str] = Field(default_factory=lambda: ["*"])
-    CORS_ALLOW_CREDENTIALS: bool = Field(default=True)
-    TRUSTED_HOSTS: list[str] = Field(default_factory=lambda: ["*"])
+    CORS_ALLOW_ORIGINS: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:8000"],
+        description="Allowed CORS origins (restrictive default for security)",
+        validation_alias=AliasChoices("CORS_ALLOW_ORIGINS", "BACKEND_CORS_ORIGINS"),
+    )
+    CORS_ALLOW_METHODS: list[str] = Field(
+        default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        description="Allowed HTTP methods for CORS",
+    )
+    CORS_ALLOW_HEADERS: list[str] = Field(
+        default_factory=lambda: ["Content-Type", "Authorization", "X-Correlation-ID"],
+        description="Allowed headers for CORS requests",
+    )
+    CORS_ALLOW_CREDENTIALS: bool = Field(default=True, description="Allow credentials in CORS requests")
+    TRUSTED_HOSTS: list[str] = Field(
+        default_factory=lambda: ["localhost", "127.0.0.1", "testserver"],
+        description="Trusted hosts (includes testserver for test compatibility)",
+    )
 
     # Middleware tuning
-    PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS: float = Field(default=1000.0, description="Slow request threshold in milliseconds")
-    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(default=60, description="Requests per minute per client")
+    PERFORMANCE_SLOW_REQUEST_THRESHOLD_MS: float = Field(
+        default=1000.0,
+        description="Slow request threshold in milliseconds (log warning above this)",
+    )
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(
+        default=100,
+        description="Requests per minute per client (production-safe default)",
+    )
     RATE_LIMIT_EXEMPT_PATHS: tuple[str, ...] = Field(
         default=(
             "/health",
-            "/api/v1/auth/login",
-            "/api/v1/auth/authorize",
-            "/api/v1/auth/token",
-            "/api/v1/auth/refresh",
+            "/api/v1/health",
+            "/api/v1/health/liveness",
+            "/api/v1/health/readiness",
+            "/metrics",
         ),
-        description="Paths exempt from rate limiting",
+        description="Paths exempt from rate limiting (health checks and metrics)",
     )
 
     # Server configuration
@@ -119,15 +143,28 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
     RATE_LIMIT_REQUESTS: int = Field(default=100, description="Requests per minute")
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ALLOW_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, value: str | list[str]) -> list[str] | str:
-        """Assemble CORS origins from environment variable."""
+    def assemble_cors_origins(cls, value: str | list[str] | None) -> list[str]:
+        """Assemble CORS origins from environment variables or defaults."""
 
-        if isinstance(value, str) and not value.startswith("["):
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+            if value.startswith("["):
+                try:
+                    parsed = json.loads(value)
+                except json.JSONDecodeError as exc:  # pragma: no cover - defensive branch
+                    raise ValueError("Invalid JSON for CORS_ALLOW_ORIGINS") from exc
+                if not isinstance(parsed, list):
+                    raise ValueError("CORS_ALLOW_ORIGINS must deserialize to a list")
+                return [str(origin).strip() for origin in parsed if str(origin).strip()]
             return [origin.strip() for origin in value.split(",") if origin.strip()]
-        if isinstance(value, (list, str)):
-            return value
+
+        if isinstance(value, list):
+            return [str(origin).strip() for origin in value if str(origin).strip()]
+
         raise ValueError(value)
 
     @property
@@ -171,6 +208,12 @@ class Settings(BaseSettings):
         """Directory used for structured log handlers."""
 
         return self.LOG_DIRECTORY
+
+    @property
+    def BACKEND_CORS_ORIGINS(self) -> list[str]:  # noqa: N802
+        """Deprecated alias retained for backwards compatibility."""
+
+        return self.CORS_ALLOW_ORIGINS
 
     @property
     def is_sqlite(self) -> bool:

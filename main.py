@@ -60,23 +60,25 @@ def create_application() -> FastAPI:
     # Add session middleware for OAuth CSRF protection
     app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
-    cors_allow_origins = (
-        [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
-        if settings.BACKEND_CORS_ORIGINS
-        else settings.CORS_ALLOW_ORIGINS
-    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_allow_origins,
+        allow_origins=settings.CORS_ALLOW_ORIGINS,
         allow_methods=settings.CORS_ALLOW_METHODS,
         allow_headers=settings.CORS_ALLOW_HEADERS,
         allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+        expose_headers=[
+            settings.REQUEST_ID_HEADER_NAME,
+            settings.PROCESS_TIME_HEADER_NAME,
+        ],
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
 
     if settings.SECURITY_HEADERS_ENABLED:
-        app.add_middleware(SecurityHeadersMiddleware)
+        app.add_middleware(
+            SecurityHeadersMiddleware,
+            enable_csp=settings.SECURITY_CSP_ENABLED,
+        )
 
     if settings.PERFORMANCE_MONITORING_ENABLED:
         app.add_middleware(
