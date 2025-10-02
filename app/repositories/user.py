@@ -1,6 +1,6 @@
 """User repository for user-specific database operations."""
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -70,30 +70,6 @@ class UserRepository(BaseRepository[User]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def email_exists(self, email: str, exclude_id: int | None = None) -> bool:
-        """Check if email exists, optionally excluding a specific user ID."""
-        stmt = select(User.id).where(User.email == email)
-        if exclude_id:
-            stmt = stmt.where(User.id != exclude_id)
-
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none() is not None
-
-    async def username_exists(self, username: str, exclude_id: int | None = None) -> bool:
-        """Check if username exists, optionally excluding a specific user ID."""
-        stmt = select(User.id).where(User.username == username)
-        if exclude_id:
-            stmt = stmt.where(User.id != exclude_id)
-
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none() is not None
-
-    async def count_active_users(self) -> int:
-        """Count active users."""
-        stmt = select(func.count()).select_from(User).where(User.is_active == True)
-        result = await self.session.execute(stmt)
-        return result.scalar() or 0
-
     async def get_users_by_creation_date(
         self,
         start_date: str | None = None,
@@ -144,9 +120,3 @@ class UserRepository(BaseRepository[User]):
         stmt = stmt.order_by(User.created_at.desc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
-
-    async def count_oauth_users(self, oauth_provider: str) -> int:
-        """Count users by OAuth provider."""
-        stmt = select(func.count(User.id)).where(User.oauth_provider == oauth_provider)
-        result = await self.session.execute(stmt)
-        return result.scalar() or 0

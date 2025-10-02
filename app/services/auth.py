@@ -28,7 +28,6 @@ class AuthService:
     """Provide reusable authentication flows for FastAPI endpoints."""
 
     def __init__(self, session: AsyncSession):
-        self.session = session
         self.user_service = UserService(session)
         self.repository = self.user_service.repository
 

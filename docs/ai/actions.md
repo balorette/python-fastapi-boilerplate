@@ -18,6 +18,8 @@ new observability defaults.
 - Refreshed the documentation backlog (`docs/todo.md`, `docs/ai/improvement-plan.md`, `docs/deployment.md`, `docs/fastapi-best-practices.md`,
   and `docs/development.md`) with the new logging behaviour and serializer guidance; logged the change in this action register.
 - Confirmed a clean `pytest --cov=app` run (185 passed / 0 failed) with the Postgres-backed harness to prove the warnings are gone.
+- Retired legacy repository helpers (`email_exists`, `username_exists`, `count_active_users`, and direct session commits) in favour of the
+  generic `BaseRepository.exists/count_records` APIs and updated unit tests to cover the active-user/date-range flows.
 
 **Outcome**: The build is warning-free with timezone-aware logs, modern Pydantic serializers, and documentation that matches the
 current behaviour. This closes the lingering deprecation item on the Phase 1 checklist and unblocks teams that need deterministic

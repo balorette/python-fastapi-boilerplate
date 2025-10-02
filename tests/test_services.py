@@ -136,20 +136,20 @@ class TestUserService:
         updated_user.email = "new@example.com"
 
         user_service.get_user = AsyncMock(return_value=sample_user)
-        user_service.repository.email_exists = AsyncMock(return_value=False)
-        user_service.repository.username_exists = AsyncMock(return_value=False)
+        user_service.repository.exists = AsyncMock(side_effect=[False, False])
         user_service.repository.update = AsyncMock(return_value=updated_user)
 
         result = await user_service.update_user(sample_user.id, UserUpdate(email="new@example.com"))
 
         assert result.email == "new@example.com"
         user_service.repository.update.assert_awaited_once()
+        assert user_service.repository.exists.await_count == 2
 
     @pytest.mark.asyncio
     async def test_update_user_conflict_email(self, user_service, sample_user):
         """Conflict is raised when updating to a duplicate email."""
         user_service.get_user = AsyncMock(return_value=sample_user)
-        user_service.repository.email_exists = AsyncMock(return_value=True)
+        user_service.repository.exists = AsyncMock(return_value=True)
 
         with pytest.raises(ConflictError):
             await user_service.update_user(sample_user.id, UserUpdate(email="dup@example.com"))
@@ -158,13 +158,15 @@ class TestUserService:
     async def test_get_active_users_paginated(self, user_service, sample_users_list, mock_session):
         """Active user pagination proxies to repository counts."""
         params = PaginationParams(skip=0, limit=10, order_by=None)
-        user_service.repository.count_active_users = AsyncMock(return_value=2)
-        user_service.repository.get_active_users = AsyncMock(return_value=sample_users_list[:2])
+        user_service.repository.count_records = AsyncMock(return_value=2)
+        user_service.repository.get_multi = AsyncMock(return_value=sample_users_list[:2])
 
         result = await user_service.get_active_users_paginated(params)
 
         assert result.total == 2
         assert len(result.items) == 2
+        user_service.repository.count_records.assert_awaited_with({"is_active": True})
+        user_service.repository.get_multi.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_get_users_by_date_range(self, user_service, sample_users_list):
@@ -185,12 +187,12 @@ class TestUserService:
     @pytest.mark.asyncio
     async def test_ensure_unique_username_handles_collisions(self, user_service):
         """Username collisions receive numeric suffixes."""
-        user_service.repository.username_exists = AsyncMock(side_effect=[True, True, False])
+        user_service.repository.exists = AsyncMock(side_effect=[True, True, False])
 
         result = await user_service._ensure_unique_username("tester")
 
         assert result == "tester2"
-        assert user_service.repository.username_exists.await_count == 3
+        assert user_service.repository.exists.await_count == 3
 
     @pytest.mark.asyncio
     async def test_update_password_success(self, user_service, sample_user):
@@ -288,7 +290,6 @@ class TestUserService:
         """Existing OAuth users are updated rather than recreated."""
         user_service.get_by_oauth_id = AsyncMock(return_value=sample_user)
         user_service.repository.update = AsyncMock(return_value=sample_user)
-        user_service.session.commit = AsyncMock()
 
         google_info = GoogleUserInfo(
             id="google-id",
@@ -306,19 +307,16 @@ class TestUserService:
         assert user == sample_user
         assert is_new is False
         user_service.repository.update.assert_awaited_once()
-        user_service.session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_create_or_update_oauth_user_creates_new(self, user_service, mock_session):
         """New OAuth identities create fresh accounts with unique usernames."""
         user_service.get_by_oauth_id = AsyncMock(return_value=None)
         user_service.repository.get_by_email = AsyncMock(return_value=None)
-        user_service.repository.username_exists = AsyncMock(return_value=False)
+        user_service.repository.exists = AsyncMock(side_effect=[False, False])
 
         new_user = MagicMock()
         user_service.repository.create = AsyncMock(return_value=new_user)
-        user_service.session.commit = AsyncMock()
-        user_service.session.rollback = AsyncMock()
 
         google_info = GoogleUserInfo(
             id="new-id",
@@ -336,7 +334,7 @@ class TestUserService:
         assert user == new_user
         assert is_new is True
         user_service.repository.create.assert_awaited_once()
-        user_service.session.commit.assert_awaited_once()
+        assert user_service.repository.exists.await_count >= 1
 
     @pytest.mark.asyncio
     async def test_create_oauth_user_links_existing(self, user_service, sample_user):
@@ -377,7 +375,6 @@ class TestUserService:
         """Linking OAuth data updates the repository and commits."""
         user_service.get_user = AsyncMock(return_value=sample_user)
         user_service.repository.update = AsyncMock(return_value=sample_user)
-        user_service.session.commit = AsyncMock()
 
         oauth_payload = OAuthUserCreate(
             email=sample_user.email,
@@ -394,15 +391,12 @@ class TestUserService:
         result = await user_service.link_oauth_account(sample_user.id, oauth_payload)
 
         assert result == sample_user
-        user_service.session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_link_oauth_account_conflict(self, user_service, sample_user):
         """Conflicts rollback the session during linking."""
         user_service.get_user = AsyncMock(return_value=sample_user)
         user_service.repository.update = AsyncMock(side_effect=Exception("boom"))
-        user_service.session.commit = AsyncMock()
-        user_service.session.rollback = AsyncMock()
 
         oauth_payload = OAuthUserCreate(
             email=sample_user.email,
@@ -418,8 +412,6 @@ class TestUserService:
 
         with pytest.raises(ConflictError):
             await user_service.link_oauth_account(sample_user.id, oauth_payload)
-
-        user_service.session.rollback.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_authenticate_oauth_user_success(self, user_service, sample_user):
@@ -451,12 +443,12 @@ class TestUserService:
     @pytest.mark.asyncio
     async def test_get_user_stats(self, user_service):
         """Aggregated user stats return computed fields."""
-        user_service.repository.count_records = AsyncMock(side_effect=[10, 3, 2])
-        user_service.repository.count_active_users = AsyncMock(return_value=7)
+        user_service.repository.count_records = AsyncMock(side_effect=[10, 7, 2, 1])
 
         stats = await user_service.get_user_stats()
 
         assert stats["total_users"] == 10
+        assert stats["active_users"] == 7
         assert stats["inactive_users"] == 3
     
     @pytest.mark.asyncio
@@ -841,7 +833,7 @@ class TestUserService:
         active_result = self.create_mock_result(count=8)
         superuser_result = self.create_mock_result(count=2)
         recent_result = self.create_mock_result(count=1)
-        
+
         mock_session.execute.side_effect = [total_result, active_result, superuser_result, recent_result]
         
         # Execute

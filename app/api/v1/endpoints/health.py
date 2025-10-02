@@ -94,13 +94,13 @@ def _calculate_block_hit_rate(block_hits: int | None, block_reads: int | None) -
     return round((hits / total) * 100, 2)
 
 
-def _collect_system_metrics() -> Dict[str, Any]:
+def _collect_system_metrics(settings) -> Dict[str, Any]:
     """Gather process and host level metrics via psutil."""
     try:
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage("/")
         cpu_percent = psutil.cpu_percent(interval=0.1)
-        process = psutil.Process()
+        include_process_details = bool(getattr(settings, "DEBUG", False))
 
         status = "healthy"
         warnings = []
@@ -112,18 +112,20 @@ def _collect_system_metrics() -> Dict[str, Any]:
             status = "degraded"
             warnings.append("Resource usage approaching critical thresholds")
 
-        return {
+        payload: Dict[str, Any] = {
             "status": status,
             "cpu_percent": cpu_percent,
             "memory_percent": memory.percent,
             "disk_percent": disk.percent,
             "warnings": warnings,
-            "process": {
-                "pid": process.pid,
+        }
+        if include_process_details:
+            process = psutil.Process()
+            payload["process"] = {
                 "memory_mb": round(process.memory_info().rss / 1024 / 1024, 2),
                 "threads": process.num_threads(),
-            },
-        }
+            }
+        return payload
     except Exception as exc:  # pragma: no cover - defensive fallback
         return {
             "status": "unknown",
@@ -202,7 +204,7 @@ async def health_summary(session: AsyncSession = Depends(get_db_session)) -> Hea
     settings = get_settings()
 
     database_check = await _collect_database_check(session)
-    system_metrics = _collect_system_metrics()
+    system_metrics = _collect_system_metrics(settings)
     configuration_check = _collect_configuration_check(settings)
 
     try:

@@ -30,7 +30,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - [ ] Patch OAuth login flows to provision SQLite tables during debug/regression runs.
 - [ ] Backfill integration tests around `/api/v1/auth/login` and `/api/v1/auth/token` to lift coverage in `auth.py` and `database.py`.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
-- [ ] Document structured logging rollout and health-check payloads in README/deployment guides.
+- [x] Document structured logging rollout and health-check payloads in README/deployment guides.
 
 #### Completed Highlights
 - [x] Consolidated documentation under `docs/` with living backlog and action logs.
