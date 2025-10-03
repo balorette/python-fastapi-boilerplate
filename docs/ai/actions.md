@@ -1,8 +1,31 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.1.1
+**Document Version**: 1.2.0
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-03 - Dependency Baseline & Documentation Audit
+
+**Context**: The previous documentation snapshot referenced future-dated work and an outdated test baseline. Running the suite locally surfaced missing runtime dependencies (`itsdangerous`, `typer`) and an incompatibility between `passlib` and `bcrypt>=4`. We needed to correct the dependency set, refresh the README/onboarding instructions, and realign the roadmap before starting RBAC work.
+
+**Actions**:
+- Added explicit pins for `itsdangerous`, `typer`, and `bcrypt>=3.2,<4.0` in `requirements.txt` / `pyproject.toml` to match the FastAPI stack.
+- Re-ran `pytest` after the dependency fixes, capturing a clean baseline (**202 passed**, 74% coverage) for reference in docs.
+- Updated `README.md` quick-start paths, feature descriptions, and Docker guidance to reflect the current repository layout.
+- Refreshed `docs/todo.md` and `docs/ai/improvement-plan.md` with accurate status snapshots, outstanding gaps, and immediate priorities.
+- Logged the work here to maintain an audit trail for downstream contributors.
+
+**Decision**: Treat the dependency baseline as part of the release contract—pin transitive requirements that gate the test harness and document the expected green build.
+
+**Impact**:
+- `pytest` is now reproducible on a fresh clone without manual package installs or version downgrades.
+- Contributors have an accurate view of completed observability/auth work and the remaining RBAC/CI items.
+- README instructions match the actual repository name, reducing onboarding friction.
+
+**Next Steps**:
+- Backfill coverage around auth and OAuth provider error paths to move toward the 80% goal.
+- Design the RBAC schema/service layer so role enforcement can land next.
+- Draft CI automation (GitHub Actions) that installs via `uv` and runs `ruff` + `pytest` using the updated dependency set.
 
 ## 2025-10-02 - Observability & Metrics Documentation Enhancement
 
