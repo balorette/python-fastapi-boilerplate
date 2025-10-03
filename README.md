@@ -1,4 +1,4 @@
-# FastAPI Boiler Plate
+# FastAPI Boilerplate
 
 A modern, production-ready FastAPI REST API.
 
@@ -9,7 +9,7 @@ A modern, production-ready FastAPI REST API.
 - **Flexible Database**: SQLite for development (default), PostgreSQL for production
 - **Authentication**: JWT-based authentication with OAuth2 + Google OAuth integration
 - **Database**: SQLite (dev) or PostgreSQL (prod) with SQLAlchemy ORM and Alembic migrations
-- **Caching**: Redis for session management and caching
+- **Caching Ready**: Redis containers and configuration hooks prepared for future caching/session features
 - **Testing**: Comprehensive test suite with pytest, async support, and UUID-based test isolation
 - **Code Quality**: Modern tooling with Ruff (linting, formatting, import sorting) and pre-commit hooks
 - **Docker**: Multi-stage Docker builds and docker-compose for development
@@ -45,14 +45,14 @@ Standard Python tooling (already installed with Python)
 **With uv (fastest):**
 ```bash
 git clone <repository-url>
-cd iac-api
+cd python-fastapi-boilerplate
 ./scripts/setup-dev-uv.sh    # New uv-based setup script
 ```
 
 **With traditional tools:**
 ```bash
 git clone <repository-url>
-cd iac-api
+cd python-fastapi-boilerplate
 ./scripts/setup-dev.sh       # Traditional pip + venv setup
 ```
 
@@ -208,9 +208,9 @@ pytest tests/test_users.py -v
 uv run pytest --cov=app --cov-report=html
 ```
 
-Current baseline: `uv run pytest --cov=app` → **185 passed / 0 failed** with coverage holding at ~72% (focus areas: `app/api/v1/endpoints/auth.py`, `app/core/database.py`, CLI helpers).
+Current baseline: `pytest --cov=app` → **202 passed / 0 failed** with coverage holding at ~74% (focus areas: `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, CLI helpers).
 
-### �️ Additional Database Management
+### 🗃️ Additional Database Management
 
 ```bash
 # Switch between databases
@@ -254,7 +254,7 @@ pre-commit run --all-files
 ## 📁 Project Structure
 
 ```
-iac-api/
+python-fastapi-boilerplate/
 ├── app/
 │   ├── api/
 │   │   └── v1/
@@ -291,8 +291,8 @@ iac-api/
 
 2. **Or build Docker image:**
    ```bash
-   docker build -t iac-api .
-   docker run -p 8000:8000 iac-api
+   docker build -t fastapi-boilerplate .
+   docker run -p 8000:8000 fastapi-boilerplate
    ```
 
 ### Environment Variables

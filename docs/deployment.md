@@ -463,13 +463,18 @@ services:
 
 #### Metrics Collection
 
-```python
-# Future: Prometheus metrics
-from prometheus_client import Counter, Histogram
+- Enable the built-in Prometheus scrape endpoint by setting `PROMETHEUS_METRICS_ENABLED=true`.
+- `app/api/routes/metrics.py` mounts `/metrics` automatically when the toggle is enabled and `prometheus-client` is installed.
+- Expose the endpoint through your ingress and configure Prometheus with a scrape job similar to:
 
-REQUEST_COUNT = Counter('requests_total', 'Total requests')
-REQUEST_DURATION = Histogram('request_duration_seconds', 'Request duration')
-```
+  ```yaml
+  - job_name: fastapi
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api:8000']
+  ```
+
+- Custom counters/histograms can be added in application code by importing from `prometheus_client` once the endpoint is active.
 
 ### Backup and Recovery
 

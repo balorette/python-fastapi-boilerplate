@@ -1,5 +1,12 @@
 # 📋 Documentation and Configuration Updates Summary
 
+## 2025-10-03 — Dependency & Documentation Alignment
+- Added missing runtime dependencies (`itsdangerous`, `typer`) and pinned `bcrypt` to `<4` across `requirements.txt` and `pyproject.toml` so the FastAPI app and tests boot without manual intervention.
+- Regenerated the local test baseline (`pytest` → 202 passed, 74% coverage) and captured the results in `docs/todo.md` / `docs/ai/improvement-plan.md`.
+- Updated `README.md` to reflect the actual repository name, rediscovered metrics capabilities, and corrected Docker commands.
+- Refreshed `docs/deployment.md` metrics section with concrete instructions for enabling the Prometheus endpoint.
+- Logged the audit in `docs/ai/actions.md` and bumped document versions to keep the knowledge base coherent.
+
 ## 2025-10-07 — Project Status Refresh
 - Ran `uv run pytest` to capture the current baseline (168 passed / 5 failed / 173 total) and documented the failing OAuth login suites.
 - Updated `docs/ai/improvement-plan.md` with an accurate current-state assessment, refreshed roadmap, and tactical focus areas.

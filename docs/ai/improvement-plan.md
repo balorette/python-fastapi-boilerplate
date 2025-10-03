@@ -1,7 +1,7 @@
 # FastAPI Enterprise Baseline - Improvement Plan
 
-**Document Version**: 1.1.1
-**Last Updated**: 2025-10-08
+**Document Version**: 1.2.0
+**Last Updated**: 2025-10-03
 **Status**: Active Development
 
 ## Executive Summary
@@ -17,9 +17,9 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - Modern Python 3.12 target, Ruff-first tooling, and uv-backed workflows already standardised.
 
 **Current Gaps** ⚠️
-- `uv run pytest` is green (**185 passed / 0 failed / 185 total**), but the harness still depends on ad-hoc SQLite bootstrap logic that should be hardened before parallelisation.
-- Coverage sits at **72%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and the CLI helpers.
-- SQLite bootstrap in ad-hoc scripts (for example `test_debug_oauth.py`) still assumes pre-created tables, leading to portability concerns when swapping databases.
+- `pytest` now runs clean locally (**202 passed**) after pinning bcrypt to the supported range, but CI automation is still missing.
+- Coverage sits at **74%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
+- Role- and permission-based access controls remain unimplemented, blocking downstream teams that need multi-tenant or admin-only endpoints.
 
 ## Implementation Roadmap
 
@@ -27,8 +27,9 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 **Status**: In Progress — objective is a green build and ≥80% coverage.
 
 #### Remaining Tasks
-- [ ] Patch OAuth login flows to provision SQLite tables during debug/regression runs.
-- [ ] Backfill integration tests around `/api/v1/auth/login` and `/api/v1/auth/token` to lift coverage in `auth.py` and `database.py`.
+- [ ] Backfill integration tests around `/api/v1/auth/login`, `/api/v1/auth/token`, and OAuth provider error paths to lift coverage in `auth.py`, `database.py`, and `app/services/oauth/`.
+- [ ] Ship role/permission scaffolding (schemas, token claims, reusable dependency) with regression coverage.
+- [ ] Stand up CI with lint + test automation so regressions surface automatically.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
 - [x] Document structured logging rollout and health-check payloads in README/deployment guides.
 
@@ -101,14 +102,14 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ## Next Steps
 
 ### Immediate Actions (Next 1-2 Days)
-1. Implement lightweight DB bootstrap in OAuth debug/integration tests.
-2. Add regression coverage for auth endpoint success/failure responses.
-3. Capture logging/health contract details in deployment docs.
+1. Raise auth/DB coverage by exercising refresh, error, and provider edge cases.
+2. Draft RBAC schema + service sketch (roles, permission checks) and outline required migrations.
+3. Capture bcrypt pin + dependency corrections in onboarding/setup docs (completed here).
 
 ### Near-Term (This Sprint)
 1. Push coverage above 80% by focusing on the uncovered modules.
-2. Update CI guidance with Ruff + pytest commands and environment setup steps.
-3. Document structured logging payloads and health check contracts once the observability docs are refreshed.
+2. Add GitHub Actions (or equivalent) workflow that runs `ruff check` and `pytest` against a uv environment.
+3. Publish refreshed setup docs explaining dependency pins (bcrypt, itsdangerous, typer) and the expected test baseline.
 
 ### Longer-Term (Post Phase 1)
 1. Kick off rate limiting and Redis caching work (Phase 2).
@@ -125,5 +126,5 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ---
 
 **Document Status**: Living Document — updated as the project progresses.
-**Last Review**: 2025-10-07
+**Last Review**: 2025-10-03
 **Next Review**: Weekly during active development
