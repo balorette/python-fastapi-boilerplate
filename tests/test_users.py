@@ -151,7 +151,8 @@ def test_search_users(client: TestClient, auth_headers: dict) -> None:
         "is_active": True,
         "is_superuser": False,
     }
-    assert client.post("/api/v1/users/", json=user_payload, headers=auth_headers).status_code == 201
+    create_response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    assert create_response.status_code == 201
 
     response = client.get("/api/v1/users/search/?query=searchuser", headers=auth_headers)
     assert response.status_code == 200
