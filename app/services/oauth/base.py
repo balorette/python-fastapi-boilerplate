@@ -13,17 +13,14 @@ class BaseOAuthProvider(ABC):
         redirect_uri: str,
         state: str,
         scope: str | None = None,
-        code_challenge: str | None = None
+        code_challenge: str | None = None,
     ) -> str:
         """Generate OAuth authorization URL."""
         pass
 
     @abstractmethod
     async def exchange_code_for_tokens(
-        self,
-        code: str,
-        redirect_uri: str,
-        code_verifier: str | None = None
+        self, code: str, redirect_uri: str, code_verifier: str | None = None
     ) -> dict[str, Any]:
         """Exchange authorization code for tokens."""
         pass

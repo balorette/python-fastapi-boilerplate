@@ -63,7 +63,9 @@ async def _collect_database_check(session: AsyncSession) -> Dict[str, Any]:
                         "num_backends": row.numbackends,
                         "xact_commit": row.xact_commit,
                         "xact_rollback": row.xact_rollback,
-                        "block_hit_rate": _calculate_block_hit_rate(row.blks_hit, row.blks_read),
+                        "block_hit_rate": _calculate_block_hit_rate(
+                            row.blks_hit, row.blks_read
+                        ),
                     }
                 else:
                     check["postgresql"] = {
@@ -199,7 +201,9 @@ def _uptime_seconds() -> int:
     summary="Aggregate system health",
     description="Aggregated health information including database latency, system metrics, and configuration flags.",
 )
-async def health_summary(session: AsyncSession = Depends(get_db_session)) -> HealthCheckSchema:
+async def health_summary(
+    session: AsyncSession = Depends(get_db_session),
+) -> HealthCheckSchema:
     """Return aggregated health information for the platform."""
     settings = get_settings()
 
@@ -254,7 +258,9 @@ async def liveness_probe() -> Dict[str, Any]:
     summary="Readiness probe",
     description="Kubernetes readiness probe verifying downstream dependencies.",
 )
-async def readiness_probe(session: AsyncSession = Depends(get_db_session)) -> Dict[str, Any]:
+async def readiness_probe(
+    session: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
     """Readiness probe that ensures the database is reachable."""
     try:
         await session.execute(text("SELECT 1"))

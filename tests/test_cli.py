@@ -82,7 +82,9 @@ def test_setup_initializes_and_creates_admin(monkeypatch, runner: CliRunner):
 
     monkeypatch.setattr(cli, "init_database", fake_init_database)
     monkeypatch.setattr(cli, "create_admin_user", fake_create_admin_user)
-    monkeypatch.setattr(cli, "close_database_connections", fake_close_database_connections)
+    monkeypatch.setattr(
+        cli, "close_database_connections", fake_close_database_connections
+    )
 
     result = runner.invoke(
         cli.app,

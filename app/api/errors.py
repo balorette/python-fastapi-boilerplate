@@ -48,7 +48,9 @@ def _json_response(
     )
 
 
-async def entity_not_found_handler(request: Request, exc: EntityNotFoundError) -> JSONResponse:
+async def entity_not_found_handler(
+    request: Request, exc: EntityNotFoundError
+) -> JSONResponse:
     logger.warning("Entity not found", extra={"error": str(exc)})
     return _json_response(
         request=request,
@@ -58,7 +60,9 @@ async def entity_not_found_handler(request: Request, exc: EntityNotFoundError) -
     )
 
 
-async def duplicate_entity_handler(request: Request, exc: DuplicateEntityError) -> JSONResponse:
+async def duplicate_entity_handler(
+    request: Request, exc: DuplicateEntityError
+) -> JSONResponse:
     logger.warning("Duplicate entity", extra={"error": str(exc)})
     return _json_response(
         request=request,
@@ -68,7 +72,9 @@ async def duplicate_entity_handler(request: Request, exc: DuplicateEntityError) 
     )
 
 
-async def business_rule_handler(request: Request, exc: BusinessRuleViolationError) -> JSONResponse:
+async def business_rule_handler(
+    request: Request, exc: BusinessRuleViolationError
+) -> JSONResponse:
     logger.warning("Business rule violation", extra={"error": str(exc)})
     return _json_response(
         request=request,
@@ -78,7 +84,9 @@ async def business_rule_handler(request: Request, exc: BusinessRuleViolationErro
     )
 
 
-async def safety_violation_handler(request: Request, exc: SafetyViolationError) -> JSONResponse:
+async def safety_violation_handler(
+    request: Request, exc: SafetyViolationError
+) -> JSONResponse:
     logger.error("Safety violation", extra={"error": str(exc)})
     return _json_response(
         request=request,
@@ -99,7 +107,9 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
     )
 
 
-async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def request_validation_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     logger.warning("Request validation error", extra={"errors": exc.errors()})
     return _json_response(
         request=request,
@@ -110,7 +120,9 @@ async def request_validation_handler(request: Request, exc: RequestValidationErr
     )
 
 
-async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+async def integrity_error_handler(
+    request: Request, exc: IntegrityError
+) -> JSONResponse:
     logger.error("Integrity error", exc_info=True)
     message = str(exc.orig) if exc.orig else str(exc)
     lowered = message.lower()
@@ -136,7 +148,9 @@ async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSON
     )
 
 
-async def data_integrity_error_handler(request: Request, exc: DataIntegrityError) -> JSONResponse:
+async def data_integrity_error_handler(
+    request: Request, exc: DataIntegrityError
+) -> JSONResponse:
     logger.error("Repository data integrity error", extra={"error": str(exc)})
     return _json_response(
         request=request,

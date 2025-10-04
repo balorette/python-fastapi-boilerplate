@@ -122,7 +122,9 @@ def setup_logging(
             HANDLER_CONSOLE: {
                 "class": "logging.StreamHandler",
                 "level": log_level.upper(),
-                "formatter": "console" if settings.ENVIRONMENT == "development" else "json",
+                "formatter": "console"
+                if settings.ENVIRONMENT == "development"
+                else "json",
                 "stream": sys.stdout,
                 "filters": ["safety_audit"],
             },

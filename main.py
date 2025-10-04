@@ -42,7 +42,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Application shutting down", extra={"environment": settings.environment})
+    logger.info(
+        "Application shutting down", extra={"environment": settings.environment}
+    )
 
 
 def create_application() -> FastAPI:
@@ -95,8 +97,7 @@ def create_application() -> FastAPI:
 
     if settings.RATE_LIMIT_ENABLED:
         requests_per_minute = (
-            settings.RATE_LIMIT_REQUESTS_PER_MINUTE
-            or settings.RATE_LIMIT_REQUESTS
+            settings.RATE_LIMIT_REQUESTS_PER_MINUTE or settings.RATE_LIMIT_REQUESTS
         )
         app.add_middleware(
             RateLimitingMiddleware,

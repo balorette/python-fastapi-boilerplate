@@ -32,7 +32,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self._correlation_header_name = correlation_header_name
         self._process_time_header_name = process_time_header_name
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         """Log incoming requests, record execution time, and enrich responses."""
 
         correlation_id = str(uuid.uuid4())
@@ -96,7 +98,9 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.slow_request_threshold_ms = slow_request_threshold_ms
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         """Log a warning whenever a request breaches the latency budget."""
 
         start_time = time.perf_counter()
@@ -141,14 +145,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
 
     DOCS_PATH_SUFFIXES = {"/docs", "/redoc", "/docs/oauth2-redirect"}
-    DOCS_SCRIPT_SOURCES = ["'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"]
+    DOCS_SCRIPT_SOURCES = [
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://cdn.jsdelivr.net",
+    ]
     DOCS_STYLE_SOURCES = ["'unsafe-inline'", "https://cdn.jsdelivr.net"]
 
     def __init__(self, app, *, enable_csp: bool = True) -> None:
         super().__init__(app)
         self._enable_csp = enable_csp
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         """Ensure security best-practice headers are present on responses."""
 
         response = await call_next(request)
@@ -163,7 +173,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("X-XSS-Protection", "1; mode=block")
 
         # Control referrer information
-        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+        )
 
         # Content Security Policy for production hardening
         if self._enable_csp:
@@ -226,7 +238,9 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         self._lock = anyio.Lock()
         self._requests: dict[str, dict[int, int]] = defaultdict(dict)
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         """Throttle clients exceeding the configured request budget."""
 
         if self._is_exempt(request.url.path):

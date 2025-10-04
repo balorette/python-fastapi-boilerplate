@@ -32,7 +32,9 @@ def test_get_user_by_id(client: TestClient, auth_headers: dict) -> None:
         "is_superuser": False,
     }
 
-    create_response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    create_response = client.post(
+        "/api/v1/users/", json=user_payload, headers=auth_headers
+    )
     assert create_response.status_code == 201
     created_user = create_response.json()
 
@@ -71,7 +73,9 @@ def test_create_user(client: TestClient, auth_headers: dict) -> None:
     _assert_has_member_role(data)
 
 
-def test_create_user_password_validation(client: TestClient, auth_headers: dict) -> None:
+def test_create_user_password_validation(
+    client: TestClient, auth_headers: dict
+) -> None:
     weak_payload = {
         "email": "weak@example.com",
         "username": "weakuser",
@@ -91,7 +95,9 @@ def test_create_user_password_validation(client: TestClient, auth_headers: dict)
         "is_active": True,
         "is_superuser": False,
     }
-    response = client.post("/api/v1/users/", json=mismatch_payload, headers=auth_headers)
+    response = client.post(
+        "/api/v1/users/", json=mismatch_payload, headers=auth_headers
+    )
     assert response.status_code == 422
 
 
@@ -105,7 +111,9 @@ def test_update_user(client: TestClient, auth_headers: dict) -> None:
         "is_active": True,
         "is_superuser": False,
     }
-    create_response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    create_response = client.post(
+        "/api/v1/users/", json=user_payload, headers=auth_headers
+    )
     assert create_response.status_code == 201
     created_user = create_response.json()
 
@@ -133,11 +141,15 @@ def test_delete_user(client: TestClient, auth_headers: dict) -> None:
         "is_active": True,
         "is_superuser": False,
     }
-    create_response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    create_response = client.post(
+        "/api/v1/users/", json=user_payload, headers=auth_headers
+    )
     assert create_response.status_code == 201
     created_user = create_response.json()
 
-    response = client.delete(f"/api/v1/users/{created_user['id']}", headers=auth_headers)
+    response = client.delete(
+        f"/api/v1/users/{created_user['id']}", headers=auth_headers
+    )
     assert response.status_code == 204
 
 
@@ -151,10 +163,14 @@ def test_search_users(client: TestClient, auth_headers: dict) -> None:
         "is_active": True,
         "is_superuser": False,
     }
-    create_response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    create_response = client.post(
+        "/api/v1/users/", json=user_payload, headers=auth_headers
+    )
     assert create_response.status_code == 201
 
-    response = client.get("/api/v1/users/search/?query=searchuser", headers=auth_headers)
+    response = client.get(
+        "/api/v1/users/search/?query=searchuser", headers=auth_headers
+    )
     assert response.status_code == 200
 
     data = response.json()
@@ -172,12 +188,16 @@ def test_get_active_users(client: TestClient, auth_headers: dict) -> None:
         assert "roles" in user
 
 
-def test_member_cannot_list_users(client: TestClient, member_auth_headers: dict) -> None:
+def test_member_cannot_list_users(
+    client: TestClient, member_auth_headers: dict
+) -> None:
     response = client.get("/api/v1/users/", headers=member_auth_headers)
     assert response.status_code == 403
 
 
-def test_member_cannot_create_users(client: TestClient, member_auth_headers: dict) -> None:
+def test_member_cannot_create_users(
+    client: TestClient, member_auth_headers: dict
+) -> None:
     user_payload = {
         "email": "unauthorized@example.com",
         "username": "unauthorized",
@@ -187,5 +207,7 @@ def test_member_cannot_create_users(client: TestClient, member_auth_headers: dic
         "is_active": True,
         "is_superuser": False,
     }
-    response = client.post("/api/v1/users/", json=user_payload, headers=member_auth_headers)
+    response = client.post(
+        "/api/v1/users/", json=user_payload, headers=member_auth_headers
+    )
     assert response.status_code == 403

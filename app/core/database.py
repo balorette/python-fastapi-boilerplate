@@ -21,15 +21,16 @@ import app.models  # noqa: F401  # Ensure models are registered with SQLAlchemy 
 # Configure logging for database operations
 logger = logging.getLogger(__name__)
 
+
 # Enhanced engine configuration with better asyncpg compatibility
 def get_engine_config() -> tuple[dict[str, Any], dict[str, Any]]:
     """Get optimized engine configuration for different database types."""
-    
+
     base_engine_kwargs = {
         "echo": settings.DEBUG,
         "future": True,  # Use SQLAlchemy 2.0 style
     }
-    
+
     base_async_kwargs = {
         "echo": settings.DEBUG,
         "future": True,
@@ -40,7 +41,7 @@ def get_engine_config() -> tuple[dict[str, Any], dict[str, Any]]:
         db_path = str(settings.DATABASE_URL).replace("sqlite:///", "")
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # SQLite-specific configuration
         sqlite_config = {
             "connect_args": {
@@ -53,31 +54,31 @@ def get_engine_config() -> tuple[dict[str, Any], dict[str, Any]]:
         }
         return (
             {**base_engine_kwargs, **sqlite_config},
-            {**base_async_kwargs, **sqlite_config}
+            {**base_async_kwargs, **sqlite_config},
         )
-    
+
     elif settings.is_postgresql:
         # PostgreSQL synchronous engine configuration
         sync_pg_config = {
             "poolclass": QueuePool,
-            "pool_size": 5,           # Conservative pool size
-            "max_overflow": 10,       # Reasonable overflow
-            "pool_timeout": 30,       # Connection acquisition timeout
-            "pool_recycle": 1800,     # 30 minutes (better for asyncpg)
-            "pool_pre_ping": True,    # Validate connections
+            "pool_size": 5,  # Conservative pool size
+            "max_overflow": 10,  # Reasonable overflow
+            "pool_timeout": 30,  # Connection acquisition timeout
+            "pool_recycle": 1800,  # 30 minutes (better for asyncpg)
+            "pool_pre_ping": True,  # Validate connections
             "pool_reset_on_return": "commit",  # Clean state on return
         }
-        
+
         # PostgreSQL async engine configuration (different from sync)
         async_pg_config = {
             # Note: async engines use their own connection pooling
-            "pool_size": 5,           # Conservative pool size
-            "max_overflow": 10,       # Reasonable overflow
-            "pool_timeout": 30,       # Connection acquisition timeout
-            "pool_recycle": 1800,     # 30 minutes (better for asyncpg)
-            "pool_pre_ping": True,    # Validate connections
+            "pool_size": 5,  # Conservative pool size
+            "max_overflow": 10,  # Reasonable overflow
+            "pool_timeout": 30,  # Connection acquisition timeout
+            "pool_recycle": 1800,  # 30 minutes (better for asyncpg)
+            "pool_pre_ping": True,  # Validate connections
         }
-        
+
         # asyncpg-specific connect args
         async_connect_args = {
             "server_settings": {
@@ -86,14 +87,19 @@ def get_engine_config() -> tuple[dict[str, Any], dict[str, Any]]:
             },
             "command_timeout": 60,  # Command timeout
         }
-        
+
         return (
             {**base_engine_kwargs, **sync_pg_config},
-            {**base_async_kwargs, **async_pg_config, "connect_args": async_connect_args}
+            {
+                **base_async_kwargs,
+                **async_pg_config,
+                "connect_args": async_connect_args,
+            },
         )
-    
+
     else:
         return base_engine_kwargs, base_async_kwargs
+
 
 # Create engines with enhanced configuration
 engine_kwargs, async_engine_kwargs = get_engine_config()
@@ -101,25 +107,20 @@ engine_kwargs, async_engine_kwargs = get_engine_config()
 try:
     # Sync engine for migrations and admin operations
     engine = create_engine(str(settings.DATABASE_URL), **engine_kwargs)
-    
+
     # Async engine with proper asyncpg configuration
     async_engine = create_async_engine(
-        str(settings.DATABASE_URL_ASYNC), 
-        **async_engine_kwargs
+        str(settings.DATABASE_URL_ASYNC), **async_engine_kwargs
     )
-    
+
     logger.info(f"Database engines created successfully for {settings.DATABASE_TYPE}")
-    
+
 except Exception as e:
     logger.error(f"Failed to create database engines: {e}")
     raise RuntimeError(f"Database engine creation failed: {e}")
 
 # Configure session makers
-SessionLocal = sessionmaker(
-    autocommit=False, 
-    autoflush=False, 
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
@@ -127,6 +128,7 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
     autoflush=False,  # Prevent automatic flushing
 )
+
 
 # Add event listeners for better connection management
 @event.listens_for(async_engine.sync_engine, "connect")
@@ -142,15 +144,18 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor.execute("PRAGMA busy_timeout=30000")
         cursor.close()
 
+
 @event.listens_for(async_engine.sync_engine, "checkout")
 def receive_checkout(dbapi_connection, connection_record, connection_proxy):
     """Handle connection checkout events."""
     logger.debug("Connection checked out from pool")
 
+
 @event.listens_for(async_engine.sync_engine, "checkin")
 def receive_checkin(dbapi_connection, connection_record):
     """Handle connection checkin events."""
     logger.debug("Connection checked in to pool")
+
 
 # Enhanced session dependencies with better error handling
 def get_db():
@@ -169,38 +174,43 @@ def get_db():
     finally:
         db.close()
 
+
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """Get asynchronous database session with enhanced error handling and retry logic."""
     session = None
     retry_count = 0
     max_retries = 3
-    
+
     while retry_count < max_retries:
         try:
             session = AsyncSessionLocal()
-            
+
             # Test connection before yielding
             await session.execute(text("SELECT 1"))
-            
+
             yield session
             await session.commit()
             break
-            
+
         except (DisconnectionError, OperationalError) as e:
-            logger.warning(f"Database connection error (attempt {retry_count + 1}): {e}")
+            logger.warning(
+                f"Database connection error (attempt {retry_count + 1}): {e}"
+            )
             if session:
                 await session.rollback()
                 await session.close()
                 session = None
-            
+
             retry_count += 1
             if retry_count >= max_retries:
-                logger.error(f"Failed to establish database connection after {max_retries} attempts")
+                logger.error(
+                    f"Failed to establish database connection after {max_retries} attempts"
+                )
                 raise
-            
+
             # Wait before retry with exponential backoff
-            await asyncio.sleep(2 ** retry_count)
-            
+            await asyncio.sleep(2**retry_count)
+
         except Exception as e:
             logger.error(f"Unexpected error in async session: {e}")
             if session:
@@ -218,13 +228,13 @@ async def get_async_db_context():
     session = None
     try:
         session = AsyncSessionLocal()
-        
+
         # Validate connection
         await session.execute(text("SELECT 1"))
-        
+
         yield session
         await session.commit()
-        
+
     except (DisconnectionError, OperationalError) as e:
         logger.error(f"Database connection error in context manager: {e}")
         if session:
@@ -239,6 +249,7 @@ async def get_async_db_context():
         if session:
             await session.close()
 
+
 # Enhanced database initialization
 async def create_tables():
     """Create all database tables with proper error handling."""
@@ -252,9 +263,9 @@ async def create_tables():
             logger.info("Creating PostgreSQL tables asynchronously...")
             async with async_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-        
+
         logger.info("Database tables created successfully")
-        
+
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
         raise
@@ -264,29 +275,32 @@ async def init_database():
     """Initialize database with enhanced error handling and logging."""
     try:
         logger.info(f"Initializing {settings.DATABASE_TYPE} database...")
-        
+
         # Test connection first
         health = await check_database_health()
         if not health["connection_status"] == "healthy":
             raise RuntimeError("Database health check failed")
-        
+
         await create_tables()
 
         # Seed default roles and permissions for RBAC
         async with AsyncSessionLocal() as session:
             await ensure_default_roles(session)
 
-        logger.info(f"✅ Database initialized successfully using {settings.DATABASE_TYPE}")
-        
+        logger.info(
+            f"✅ Database initialized successfully using {settings.DATABASE_TYPE}"
+        )
+
         if settings.is_sqlite:
             db_path = str(settings.DATABASE_URL).replace("sqlite:///", "")
             logger.info(f"📁 SQLite database created at: {db_path}")
         else:
             logger.info(f"🐘 PostgreSQL database connected")
-            
+
     except Exception as e:
         logger.error(f"❌ Failed to initialize database: {e}")
         raise
+
 
 # Enhanced health check with connection pool status
 async def check_database_health() -> dict[str, Any]:
@@ -295,63 +309,65 @@ async def check_database_health() -> dict[str, Any]:
         "database_type": settings.DATABASE_TYPE,
         "connection_status": "unknown",
         "pool_status": {},
-        "error": None
+        "error": None,
     }
-    
+
     try:
         async with get_async_db_context() as session:
             # Test basic connectivity
             result = await session.execute(text("SELECT 1 as health_check"))
             health_value = result.scalar()
-            
+
             if health_value == 1:
                 health_status["connection_status"] = "healthy"
-                
+
                 # Get pool status for PostgreSQL
                 if settings.is_postgresql:
                     try:
                         pool = async_engine.pool
                         health_status["pool_status"] = {
                             "pool_available": True,
-                            "engine_status": "connected"
+                            "engine_status": "connected",
                         }
                     except Exception:
                         health_status["pool_status"] = {
                             "pool_available": False,
-                            "engine_status": "unknown"
+                            "engine_status": "unknown",
                         }
             else:
                 health_status["connection_status"] = "unhealthy"
                 health_status["error"] = "Health check query returned unexpected result"
-                
+
     except Exception as e:
         health_status["connection_status"] = "error"
         health_status["error"] = str(e)
         logger.error(f"Database health check failed: {e}")
-    
+
     return health_status
+
 
 # Graceful shutdown function
 async def close_database_connections():
     """Gracefully close all database connections and dispose engines."""
     try:
         logger.info("Closing database connections...")
-        
+
         # Close async engine
         if async_engine:
             await async_engine.dispose()
             logger.info("Async engine disposed")
-        
+
         # Close sync engine
         if engine:
             engine.dispose()
             logger.info("Sync engine disposed")
-            
+
         logger.info("✅ Database connections closed successfully")
-        
+
     except Exception as e:
         logger.error(f"Error closing database connections: {e}")
         raise
+
 
 # Connection validation utility
 async def validate_connection() -> bool:
@@ -364,10 +380,11 @@ async def validate_connection() -> bool:
         logger.error(f"Connection validation failed: {e}")
         return False
 
+
 # Export commonly used items
 __all__ = [
     "engine",
-    "async_engine", 
+    "async_engine",
     "SessionLocal",
     "AsyncSessionLocal",
     "get_db",
@@ -376,5 +393,5 @@ __all__ = [
     "init_database",
     "check_database_health",
     "close_database_connections",
-    "validate_connection"
+    "validate_connection",
 ]

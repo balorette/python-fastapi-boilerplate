@@ -51,8 +51,14 @@ def test_request_logging_emits_correlation_metadata(tmp_path):
     correlation_id = response.headers["X-Test-Correlation"]
     assert float(response.headers["X-Test-Elapsed"]) >= 0.0
 
-    start_record = next(record for record in handler.records if record.getMessage() == "Request started")
-    complete_record = next(record for record in handler.records if record.getMessage() == "Request completed")
+    start_record = next(
+        record for record in handler.records if record.getMessage() == "Request started"
+    )
+    complete_record = next(
+        record
+        for record in handler.records
+        if record.getMessage() == "Request completed"
+    )
 
     assert start_record.correlation_id == correlation_id
     assert start_record.request_id == correlation_id

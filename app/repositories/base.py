@@ -35,7 +35,9 @@ class BaseRepository(Generic[ModelType]):
         if session is not None:
             return session
         if self.session is None:
-            raise RepositoryError("AsyncSession is not available for repository operation")
+            raise RepositoryError(
+                "AsyncSession is not available for repository operation"
+            )
         return self.session
 
     async def get(
@@ -52,7 +54,9 @@ class BaseRepository(Generic[ModelType]):
 
         if load_relationships:
             if load_relationships is True:
-                relationship_keys = [rel.key for rel in self.model.__mapper__.relationships]
+                relationship_keys = [
+                    rel.key for rel in self.model.__mapper__.relationships
+                ]
             elif isinstance(load_relationships, (list, tuple, set)):
                 relationship_keys = list(load_relationships)
             else:
@@ -75,7 +79,9 @@ class BaseRepository(Generic[ModelType]):
     ) -> Optional[ModelType]:
         """Alias for :meth:`get` to match newer repository interface."""
 
-        return await self.get(id, load_relationships=load_relationships, session=session)
+        return await self.get(
+            id, load_relationships=load_relationships, session=session
+        )
 
     async def get_by_field(
         self,
@@ -160,7 +166,9 @@ class BaseRepository(Generic[ModelType]):
     ) -> list[ModelType]:
         """Helper mirroring the newer repository interface."""
 
-        pagination = pagination or PaginationParams(skip=0, limit=100, order_by=order_by)
+        pagination = pagination or PaginationParams(
+            skip=0, limit=100, order_by=order_by
+        )
         return await self.get_multi(
             skip=pagination.skip,
             limit=pagination.limit,

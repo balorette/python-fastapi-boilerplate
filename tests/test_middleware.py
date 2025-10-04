@@ -165,10 +165,15 @@ def test_request_logging_emits_correlation_id():
     assert correlation_id, "Expected correlation header"
 
     completed_records = [
-        record for record in handler.records if record.getMessage() == "Request completed"
+        record
+        for record in handler.records
+        if record.getMessage() == "Request completed"
     ]
     assert completed_records, "Expected completion log entry"
-    assert any(getattr(record, "request_id", None) == correlation_id for record in completed_records)
+    assert any(
+        getattr(record, "request_id", None) == correlation_id
+        for record in completed_records
+    )
 
 
 def test_request_logging_respects_custom_header_names(monkeypatch):
@@ -223,7 +228,9 @@ def test_rate_limiting_respects_custom_exempt_paths(monkeypatch):
 
     monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
     monkeypatch.setattr(settings, "RATE_LIMIT_REQUESTS_PER_MINUTE", 1)
-    monkeypatch.setattr(settings, "RATE_LIMIT_EXEMPT_PATHS", ("/api/v1/health/liveness",))
+    monkeypatch.setattr(
+        settings, "RATE_LIMIT_EXEMPT_PATHS", ("/api/v1/health/liveness",)
+    )
 
     app_with_limit = create_application()
     with TestClient(app_with_limit) as client:

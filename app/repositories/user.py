@@ -64,10 +64,7 @@ class UserRepository(BaseRepository[User]):
         """Search users by username or email with fuzzy matching."""
         search_term = f"%{query}%"
         stmt = select(User).where(
-            or_(
-                User.username.ilike(search_term),
-                User.email.ilike(search_term)
-            )
+            or_(User.username.ilike(search_term), User.email.ilike(search_term))
         )
         stmt = self._with_role_hierarchy(stmt, load_role_hierarchy)
         stmt = stmt.offset(skip).limit(limit)
@@ -89,7 +86,7 @@ class UserRepository(BaseRepository[User]):
 
         # Apply ordering
         if order_by:
-            if order_by.startswith('-'):
+            if order_by.startswith("-"):
                 # Descending order
                 order_field = order_by[1:]
                 if hasattr(User, order_field):
@@ -134,9 +131,7 @@ class UserRepository(BaseRepository[User]):
     async def get_superusers(self, skip: int = 0, limit: int = 100) -> list[User]:
         """Get superuser accounts."""
         return await self.get_multi(
-            skip=skip,
-            limit=limit,
-            filters={"is_superuser": True}
+            skip=skip, limit=limit, filters={"is_superuser": True}
         )
 
     # OAuth-specific methods
@@ -151,10 +146,7 @@ class UserRepository(BaseRepository[User]):
         """Get user by OAuth provider and ID."""
 
         stmt = select(User).where(
-            and_(
-                User.oauth_provider == oauth_provider,
-                User.oauth_id == oauth_id
-            )
+            and_(User.oauth_provider == oauth_provider, User.oauth_id == oauth_id)
         )
         stmt = self._with_role_hierarchy(stmt, load_role_hierarchy)
         result = await self.session.execute(stmt)

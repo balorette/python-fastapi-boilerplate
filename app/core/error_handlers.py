@@ -15,7 +15,9 @@ def register_error_handlers(app: FastAPI) -> None:
     """Register all error handlers with the FastAPI app."""
 
     @app.exception_handler(APIException)
-    async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
+    async def api_exception_handler(
+        request: Request, exc: APIException
+    ) -> JSONResponse:
         """Handle custom API exceptions."""
         logger.error(
             "API Exception: %s - Path: %s",
@@ -26,26 +28,22 @@ def register_error_handlers(app: FastAPI) -> None:
                 "details": exc.details,
                 "path": str(request.url.path),
                 "method": request.method,
-            }
+            },
         )
 
         content = {
             "error": {
                 "message": exc.message,
                 "status_code": exc.status_code,
-                "details": exc.details
+                "details": exc.details,
             }
         }
 
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=content
-        )
+        return JSONResponse(status_code=exc.status_code, content=content)
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_exception_handler(
-        request: Request,
-        exc: SQLAlchemyError
+        request: Request, exc: SQLAlchemyError
     ) -> JSONResponse:
         """Handle SQLAlchemy database errors."""
         logger.error(
@@ -56,7 +54,7 @@ def register_error_handlers(app: FastAPI) -> None:
                 "path": str(request.url.path),
                 "method": request.method,
                 "error_type": type(exc).__name__,
-            }
+            },
         )
 
         database_error = DatabaseError("Database operation failed")
@@ -64,19 +62,15 @@ def register_error_handlers(app: FastAPI) -> None:
             "error": {
                 "message": database_error.message,
                 "status_code": database_error.status_code,
-                "details": database_error.details
+                "details": database_error.details,
             }
         }
 
-        return JSONResponse(
-            status_code=database_error.status_code,
-            content=content
-        )
+        return JSONResponse(status_code=database_error.status_code, content=content)
 
     @app.exception_handler(Exception)
     async def general_exception_handler(
-        request: Request,
-        exc: Exception
+        request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle all other unhandled exceptions."""
         logger.error(
@@ -88,18 +82,17 @@ def register_error_handlers(app: FastAPI) -> None:
                 "method": request.method,
                 "error_type": type(exc).__name__,
             },
-            exc_info=True
+            exc_info=True,
         )
 
         content = {
             "error": {
                 "message": "Internal server error",
                 "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "details": {}
+                "details": {},
             }
         }
 
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=content
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=content
         )

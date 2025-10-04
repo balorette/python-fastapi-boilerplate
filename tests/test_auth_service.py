@@ -43,7 +43,9 @@ def sample_user() -> User:
 
 
 @pytest.mark.asyncio
-async def test_authorize_local_success(auth_service: AuthService, sample_user: User) -> None:
+async def test_authorize_local_success(
+    auth_service: AuthService, sample_user: User
+) -> None:
     auth_service.user_service.authenticate_user = AsyncMock(return_value=sample_user)
 
     with patch("app.services.auth.create_access_token", return_value="auth-code"):
@@ -65,9 +67,14 @@ async def test_exchange_local_authorization_code_success(
 ) -> None:
     auth_service.repository.get = AsyncMock(return_value=sample_user)
 
-    with patch("app.services.auth.verify_token", return_value={"sub": str(sample_user.id), "type": "auth_code"}):
+    with patch(
+        "app.services.auth.verify_token",
+        return_value={"sub": str(sample_user.id), "type": "auth_code"},
+    ):
         with patch("app.services.auth.create_access_token", return_value="access"):
-            with patch("app.services.auth.create_refresh_token", return_value="refresh"):
+            with patch(
+                "app.services.auth.create_refresh_token", return_value="refresh"
+            ):
                 token = await auth_service.exchange_local_authorization_code("code")
 
     assert token.access_token == "access"
@@ -76,7 +83,9 @@ async def test_exchange_local_authorization_code_success(
 
 
 @pytest.mark.asyncio
-async def test_exchange_local_authorization_code_invalid(auth_service: AuthService) -> None:
+async def test_exchange_local_authorization_code_invalid(
+    auth_service: AuthService,
+) -> None:
     with patch("app.services.auth.verify_token", return_value=None):
         with pytest.raises(AuthenticationError):
             await auth_service.exchange_local_authorization_code("invalid")
@@ -101,12 +110,18 @@ async def test_login_local_updates_last_login(
 
 
 @pytest.mark.asyncio
-async def test_refresh_tokens_success(auth_service: AuthService, sample_user: User) -> None:
+async def test_refresh_tokens_success(
+    auth_service: AuthService, sample_user: User
+) -> None:
     auth_service.repository.get = AsyncMock(return_value=sample_user)
 
-    with patch("app.services.auth.verify_token", return_value={"sub": str(sample_user.id)}):
+    with patch(
+        "app.services.auth.verify_token", return_value={"sub": str(sample_user.id)}
+    ):
         with patch("app.services.auth.create_access_token", return_value="access"):
-            with patch("app.services.auth.create_refresh_token", return_value="rotated"):
+            with patch(
+                "app.services.auth.create_refresh_token", return_value="rotated"
+            ):
                 tokens = await auth_service.refresh_tokens("refresh-token")
 
     assert tokens.refresh_token == "rotated"
@@ -114,11 +129,15 @@ async def test_refresh_tokens_success(auth_service: AuthService, sample_user: Us
 
 
 @pytest.mark.asyncio
-async def test_refresh_tokens_inactive_user(auth_service: AuthService, sample_user: User) -> None:
+async def test_refresh_tokens_inactive_user(
+    auth_service: AuthService, sample_user: User
+) -> None:
     inactive_user = sample_user
     inactive_user.is_active = False
     auth_service.repository.get = AsyncMock(return_value=inactive_user)
 
-    with patch("app.services.auth.verify_token", return_value={"sub": str(sample_user.id)}):
+    with patch(
+        "app.services.auth.verify_token", return_value={"sub": str(sample_user.id)}
+    ):
         with pytest.raises(AuthenticationError):
             await auth_service.refresh_tokens("refresh-token")

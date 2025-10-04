@@ -19,19 +19,31 @@ class Settings(BaseSettings):
     APP_NAME: str = Field(default="MyAPI", description="Human friendly app name")
     PROJECT_NAME: str = Field(default="API", description="Project name")
     PROJECT_VERSION: str = Field(default="0.1.0", description="Project version")
-    SERVICE_NAME: str = Field(default="my-api", description="Structured logging service identifier")
+    SERVICE_NAME: str = Field(
+        default="my-api", description="Structured logging service identifier"
+    )
 
     # Environment & runtime flags
-    ENVIRONMENT: str = Field(default="development", description="Deployment environment name")
+    ENVIRONMENT: str = Field(
+        default="development", description="Deployment environment name"
+    )
     DEBUG: bool = Field(default=True, description="Enable debug mode")
     INIT_DB: bool = Field(default=False, description="Initialize database on startup")
 
     # Logging & observability
     LOG_LEVEL: str = Field(default="INFO", description="Base log level")
-    LOG_DIRECTORY: str = Field(default="logs", description="Directory for rotated log files")
-    AUDIT_LOG_ENABLED: bool = Field(default=True, description="Emit audit/compliance logs")
-    SAFETY_CHECKS_ENABLED: bool = Field(default=True, description="Enable safety guardrails")
-    PROMETHEUS_METRICS_ENABLED: bool = Field(default=False, description="Expose Prometheus metrics endpoint")
+    LOG_DIRECTORY: str = Field(
+        default="logs", description="Directory for rotated log files"
+    )
+    AUDIT_LOG_ENABLED: bool = Field(
+        default=True, description="Emit audit/compliance logs"
+    )
+    SAFETY_CHECKS_ENABLED: bool = Field(
+        default=True, description="Enable safety guardrails"
+    )
+    PROMETHEUS_METRICS_ENABLED: bool = Field(
+        default=False, description="Expose Prometheus metrics endpoint"
+    )
     REQUEST_LOGGING_ENABLED: bool = Field(
         default=True,
         description="Enable structured request logging middleware",
@@ -66,8 +78,12 @@ class Settings(BaseSettings):
         description="Secret key for JWT - MUST be changed in production!",
     )
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration time")
-    EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = Field(default=24, description="Password reset token expiration time in hours")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=30, description="Access token expiration time"
+    )
+    EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = Field(
+        default=24, description="Password reset token expiration time in hours"
+    )
 
     # JWT / OAuth2 configuration
     JWT_ISSUER: str = Field(
@@ -78,17 +94,29 @@ class Settings(BaseSettings):
         default="your-frontend-app",
         description="JWT audience claim (aud) for OAuth2 compliance",
     )
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=30, description="Refresh token expiration in days")
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=30, description="Refresh token expiration in days"
+    )
 
     # OAuth providers - Google
     GOOGLE_OAUTH_ENABLED: bool = Field(default=False, description="Use Google OAuth")
-    GOOGLE_CLIENT_ID: str = Field(default="your-google-client-id", description="Google Client ID")
-    GOOGLE_CLIENT_SECRET: str = Field(default="your-google-client-secret", description="Google Client Secret")
-    GOOGLE_REDIRECT_URI: str = Field(default="your-google-redirect-uri", description="Google Redirect URI")
+    GOOGLE_CLIENT_ID: str = Field(
+        default="your-google-client-id", description="Google Client ID"
+    )
+    GOOGLE_CLIENT_SECRET: str = Field(
+        default="your-google-client-secret", description="Google Client Secret"
+    )
+    GOOGLE_REDIRECT_URI: str = Field(
+        default="your-google-redirect-uri", description="Google Redirect URI"
+    )
 
     # Database
-    DATABASE_URL: PostgresDsn | str | None = Field(default="sqlite:///./app.db", description="Database URL")
-    DATABASE_URL_ASYNC: PostgresDsn | str | None = Field(default="sqlite+aiosqlite:///./app.db", description="Async database URL")
+    DATABASE_URL: PostgresDsn | str | None = Field(
+        default="sqlite:///./app.db", description="Database URL"
+    )
+    DATABASE_URL_ASYNC: PostgresDsn | str | None = Field(
+        default="sqlite+aiosqlite:///./app.db", description="Async database URL"
+    )
     DATABASE_TYPE: str = Field(default="sqlite", description="Database type")
 
     # Redis
@@ -108,7 +136,9 @@ class Settings(BaseSettings):
         default_factory=lambda: ["Content-Type", "Authorization", "X-Correlation-ID"],
         description="Allowed headers for CORS requests",
     )
-    CORS_ALLOW_CREDENTIALS: bool = Field(default=True, description="Allow credentials in CORS requests")
+    CORS_ALLOW_CREDENTIALS: bool = Field(
+        default=True, description="Allow credentials in CORS requests"
+    )
     TRUSTED_HOSTS: list[str] = Field(
         default_factory=lambda: ["localhost", "127.0.0.1", "testserver"],
         description="Trusted hosts (includes testserver for test compatibility)",
@@ -155,7 +185,9 @@ class Settings(BaseSettings):
             if value.startswith("["):
                 try:
                     parsed = json.loads(value)
-                except json.JSONDecodeError as exc:  # pragma: no cover - defensive branch
+                except (
+                    json.JSONDecodeError
+                ) as exc:  # pragma: no cover - defensive branch
                     raise ValueError("Invalid JSON for CORS_ALLOW_ORIGINS") from exc
                 if not isinstance(parsed, list):
                     raise ValueError("CORS_ALLOW_ORIGINS must deserialize to a list")

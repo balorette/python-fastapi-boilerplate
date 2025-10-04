@@ -58,7 +58,9 @@ async def async_session() -> AsyncSession:
 async def test_repository_crud_and_pagination(async_session: AsyncSession):
     repo = WidgetRepository(async_session)
 
-    widget = await repo.create({"id": str(uuid.uuid4()), "name": "Alpha"}, user_id="tester")
+    widget = await repo.create(
+        {"id": str(uuid.uuid4()), "name": "Alpha"}, user_id="tester"
+    )
 
     fetched = await repo.get_by_id(widget.id)
     assert fetched is not None
@@ -100,7 +102,9 @@ async def test_service_helpers_validate_business_logic(async_session: AsyncSessi
     with pytest.raises(BusinessRuleViolationError):
         service._validate_business_rules({"must_pass": False})
 
-    await service._validate_entity_exists(async_session, repo, widget_id, entity_name="Widget")
+    await service._validate_entity_exists(
+        async_session, repo, widget_id, entity_name="Widget"
+    )
 
     with pytest.raises(DuplicateEntityError):
         await service._validate_unique_field(

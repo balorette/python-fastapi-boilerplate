@@ -44,7 +44,9 @@ def test_health_summary_includes_process_when_debug(monkeypatch, client_with_db)
     assert "pid" not in system_check.get("process", {})
 
 
-def test_health_summary_hides_process_details_when_not_debug(monkeypatch, client_with_db):
+def test_health_summary_hides_process_details_when_not_debug(
+    monkeypatch, client_with_db
+):
     """Process identifiers should be omitted from health payloads by default."""
 
     monkeypatch.setattr(settings, "DEBUG", False)
@@ -80,7 +82,9 @@ def test_readiness_probe_validates_database(client_with_db):
     datetime.fromisoformat(payload["timestamp"])
 
 
-def test_health_summary_degrades_when_audit_logging_disabled(monkeypatch, client_with_db):
+def test_health_summary_degrades_when_audit_logging_disabled(
+    monkeypatch, client_with_db
+):
     """Disabling audit logging should surface as a degraded configuration check."""
 
     monkeypatch.setattr(settings, "AUDIT_LOG_ENABLED", False)

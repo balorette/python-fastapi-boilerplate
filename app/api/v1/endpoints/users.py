@@ -31,7 +31,9 @@ async def get_current_user_info(
 async def get_users(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
-    order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
+    order_by: str = Query(
+        None, description="Field to order by (prefix with - for desc)"
+    ),
     user_service: UserService = Depends(get_user_service),
     _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
@@ -41,7 +43,9 @@ async def get_users(
         users = await user_service.get_users_paginated(pagination_params)
         return users
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -55,7 +59,9 @@ async def create_user(
         created_user = await user_service.create_user(user)
         return UserResponse.model_validate(created_user)
     except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
 
@@ -88,7 +94,9 @@ async def update_user(
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
     except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
 
@@ -117,18 +125,23 @@ async def search_users(
     """Search users by username or email."""
     try:
         from app.schemas.pagination import SearchParams
+
         search_params = SearchParams(query=query, skip=skip, limit=limit, order_by=None)
         users = await user_service.search_users(search_params)
         return users
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/active/", response_model=PaginatedResponse[UserResponse])
 async def get_active_users(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
-    order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
+    order_by: str = Query(
+        None, description="Field to order by (prefix with - for desc)"
+    ),
     user_service: UserService = Depends(get_user_service),
     _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
@@ -138,4 +151,6 @@ async def get_active_users(
         users = await user_service.get_active_users_paginated(pagination_params)
         return users
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )

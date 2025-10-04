@@ -161,12 +161,16 @@ class BaseService(ABC):
     ) -> Dict[str, Any]:
         """Strip forbidden keys and ``None`` values from update payloads."""
 
-        sanitized = {key: value for key, value in update_data.items() if value is not None}
+        sanitized = {
+            key: value for key, value in update_data.items() if value is not None
+        }
         if forbidden_fields:
             for field in forbidden_fields:
                 sanitized.pop(field, None)
         if allowed_fields is not None:
-            sanitized = {key: value for key, value in sanitized.items() if key in allowed_fields}
+            sanitized = {
+                key: value for key, value in sanitized.items() if key in allowed_fields
+            }
         return sanitized
 
     async def paginate(

@@ -70,16 +70,20 @@ async def async_db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 def override_get_async_db(async_db_session: AsyncSession):
     """Override async database dependency."""
+
     def _override():
         return async_db_session
+
     return _override
 
 
-@pytest.fixture  
+@pytest.fixture
 def override_get_user_service(async_db_session: AsyncSession):
     """Override user service dependency."""
+
     def _override():
         return UserService(async_db_session)
+
     return _override
 
 
@@ -93,15 +97,15 @@ async def client_with_db(async_db_session: AsyncSession):
     for middleware in app.user_middleware:
         if middleware.cls is RateLimitingMiddleware:
             middleware.kwargs["requests_per_minute"] = 10000
-    
+
     async def _override_get_db_session():
         return async_db_session
 
     app.dependency_overrides[get_db_session] = _override_get_db_session
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     # Clear overrides
     app.dependency_overrides.clear()
 
@@ -116,6 +120,7 @@ def client(client_with_db: TestClient):
 async def sample_user(async_db_session: AsyncSession):
     """Create a test user in the database."""
     import uuid
+
     unique_id = str(uuid.uuid4())[:8]
     user_data = User(
         username=f"testuser_{unique_id}",
@@ -123,7 +128,7 @@ async def sample_user(async_db_session: AsyncSession):
         full_name="Test User",
         hashed_password=get_password_hash("TestPass123!"),
         is_active=True,
-        is_superuser=False
+        is_superuser=False,
     )
 
     member_role = await async_db_session.scalar(
@@ -142,6 +147,7 @@ async def sample_user(async_db_session: AsyncSession):
 async def admin_user(async_db_session: AsyncSession):
     """Create an admin user in the database."""
     import uuid
+
     unique_id = str(uuid.uuid4())[:8]
     admin_data = User(
         username=f"admin_{unique_id}",
@@ -149,7 +155,7 @@ async def admin_user(async_db_session: AsyncSession):
         full_name="Admin User",
         hashed_password=get_password_hash("AdminPass123!"),
         is_active=True,
-        is_superuser=True
+        is_superuser=True,
     )
 
     admin_role = await async_db_session.scalar(
@@ -168,6 +174,7 @@ async def admin_user(async_db_session: AsyncSession):
 async def member_user(async_db_session: AsyncSession):
     """Create a regular member user."""
     import uuid
+
     unique_id = str(uuid.uuid4())[:8]
     member_data = User(
         username=f"member_{unique_id}",
@@ -175,7 +182,7 @@ async def member_user(async_db_session: AsyncSession):
         full_name="Member User",
         hashed_password=get_password_hash("MemberPass123!"),
         is_active=True,
-        is_superuser=False
+        is_superuser=False,
     )
 
     member_role = await async_db_session.scalar(
@@ -195,36 +202,35 @@ async def auth_headers(client_with_db, admin_user):
     """Get authentication headers using OAuth2 login."""
     # Use the dynamic admin user's email
     admin_email = admin_user.email
-    
+
     # First try the local login endpoint
     login_response = client_with_db.post(
         "/api/v1/auth/login",
         json={
             "email": admin_email,
             "password": "AdminPass123!",
-            "grant_type": "password"
-        }
+            "grant_type": "password",
+        },
     )
-    
+
     if login_response.status_code == 200:
         token = login_response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
-    
+
     # If OAuth login doesn't work, try the basic auth login
     login_response = client_with_db.post(
         "/api/v1/auth/login",
-        data={
-            "username": admin_email,
-            "password": "AdminPass123!"
-        }
+        data={"username": admin_email, "password": "AdminPass123!"},
     )
-    
+
     if login_response.status_code == 200:
         token = login_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
     # If both fail, raise an error with debugging info
-    raise Exception(f"Login failed for {admin_email}. OAuth response: {login_response.status_code} - {login_response.text}")
+    raise Exception(
+        f"Login failed for {admin_email}. OAuth response: {login_response.status_code} - {login_response.text}"
+    )
 
 
 @pytest.fixture
@@ -235,8 +241,8 @@ async def member_auth_headers(client_with_db, member_user):
         json={
             "email": member_user.email,
             "password": "MemberPass123!",
-            "grant_type": "password"
-        }
+            "grant_type": "password",
+        },
     )
 
     if login_response.status_code != 200:

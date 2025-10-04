@@ -19,8 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_db)
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)
 ) -> User:
     """Get current authenticated user supporting both local JWT and Google ID tokens."""
     credentials_exception = HTTPException(
@@ -57,7 +56,9 @@ async def get_current_user(
             # Extract Google user ID
             google_user_id = id_info.get("sub")
             if google_user_id:
-                user = await user_service.authenticate_oauth_user("google", google_user_id)
+                user = await user_service.authenticate_oauth_user(
+                    "google", google_user_id
+                )
                 if user and user.is_active:
                     return user
         except Exception:
@@ -72,12 +73,13 @@ async def get_current_user(
         raise credentials_exception
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Get current active user."""
     if not current_user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is deactivated"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is deactivated"
         )
     return current_user
 
@@ -93,7 +95,9 @@ def require_roles(*roles: SystemRole | str) -> Callable[[User], User]:
         for role in roles
     }
 
-    async def _role_guard(current_user: User = Depends(get_current_active_user)) -> User:
+    async def _role_guard(
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
         if not any(role in normalized_roles for role in current_user.role_names):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -115,7 +119,9 @@ def require_permissions(*permissions: SystemPermission | str) -> Callable[[User]
         for perm in permissions
     }
 
-    async def _permission_guard(current_user: User = Depends(get_current_active_user)) -> User:
+    async def _permission_guard(
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
         missing = normalized_permissions - set(current_user.permission_names)
         if missing:
             raise HTTPException(

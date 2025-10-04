@@ -28,16 +28,19 @@ class TestOAuth2JWTValidation:
             "full_name": "Test User",
             "is_active": True,
             "is_superuser": False,
-            "hashed_password": get_password_hash("TestPass123!")
+            "hashed_password": get_password_hash("TestPass123!"),
         }
 
     def test_oauth_login_success_with_real_jwt(self, client, test_user_in_app):
         """Test OAuth login with real JWT token generation and validation."""
 
         # Mock the UserRepository methods
-        with patch('app.repositories.user.UserRepository.get_by_email') as mock_get_by_email, \
-             patch('app.repositories.user.UserRepository.update') as mock_update:
-            
+        with (
+            patch(
+                "app.repositories.user.UserRepository.get_by_email"
+            ) as mock_get_by_email,
+            patch("app.repositories.user.UserRepository.update") as mock_update,
+        ):
             # Create User object from test data
             user_obj = User(
                 id=test_user_in_app["id"],
@@ -45,9 +48,9 @@ class TestOAuth2JWTValidation:
                 username=test_user_in_app.get("username", "testuser"),
                 full_name=test_user_in_app["full_name"],
                 hashed_password=test_user_in_app["hashed_password"],
-                is_active=test_user_in_app["is_active"]
+                is_active=test_user_in_app["is_active"],
             )
-            
+
             mock_get_by_email.return_value = user_obj
             mock_update.return_value = user_obj  # Return updated user
 
@@ -57,8 +60,8 @@ class TestOAuth2JWTValidation:
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",
-                    "grant_type": "password"
-                }
+                    "grant_type": "password",
+                },
             )
 
             assert response.status_code == 200
@@ -86,7 +89,9 @@ class TestOAuth2JWTValidation:
     def test_oauth_login_invalid_credentials(self, client):
         """Test OAuth login with invalid credentials."""
 
-        with patch('app.repositories.user.UserRepository.get_by_email') as mock_get_by_email:
+        with patch(
+            "app.repositories.user.UserRepository.get_by_email"
+        ) as mock_get_by_email:
             # Return None to simulate user not found
             mock_get_by_email.return_value = None
 
@@ -95,8 +100,8 @@ class TestOAuth2JWTValidation:
                 json={
                     "email": "test@example.com",
                     "password": "WrongPassword123!",
-                    "grant_type": "password"
-                }
+                    "grant_type": "password",
+                },
             )
 
             assert response.status_code == 401
@@ -107,17 +112,21 @@ class TestOAuth2JWTValidation:
     def test_oauth_login_wrong_password(self, client, test_user_in_app):
         """Test OAuth login with correct email but wrong password."""
 
-        with patch('app.repositories.user.UserRepository.get_by_email') as mock_get_by_email:
+        with patch(
+            "app.repositories.user.UserRepository.get_by_email"
+        ) as mock_get_by_email:
             # Return user but password won't match
             user_obj = User(
                 id=test_user_in_app["id"],
                 email=test_user_in_app["email"],
                 username=test_user_in_app.get("username", "testuser"),
                 full_name=test_user_in_app["full_name"],
-                hashed_password=get_password_hash("DifferentPassword123!"),  # Different password
-                is_active=test_user_in_app["is_active"]
+                hashed_password=get_password_hash(
+                    "DifferentPassword123!"
+                ),  # Different password
+                is_active=test_user_in_app["is_active"],
             )
-            
+
             mock_get_by_email.return_value = user_obj
 
             response = client.post(
@@ -125,8 +134,8 @@ class TestOAuth2JWTValidation:
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",  # Correct password but hash won't match
-                    "grant_type": "password"
-                }
+                    "grant_type": "password",
+                },
             )
 
             assert response.status_code == 401
@@ -134,7 +143,9 @@ class TestOAuth2JWTValidation:
     def test_oauth_login_inactive_user(self, client, test_user_in_app):
         """Test OAuth login with inactive user account."""
 
-        with patch('app.repositories.user.UserRepository.get_by_email') as mock_get_by_email:
+        with patch(
+            "app.repositories.user.UserRepository.get_by_email"
+        ) as mock_get_by_email:
             # Create inactive user
             inactive_user = User(
                 id=test_user_in_app["id"],
@@ -142,9 +153,9 @@ class TestOAuth2JWTValidation:
                 username=test_user_in_app.get("username", "testuser"),
                 full_name=test_user_in_app["full_name"],
                 hashed_password=test_user_in_app["hashed_password"],
-                is_active=False  # Inactive user
+                is_active=False,  # Inactive user
             )
-            
+
             mock_get_by_email.return_value = inactive_user
 
             response = client.post(
@@ -152,8 +163,8 @@ class TestOAuth2JWTValidation:
                 json={
                     "email": "test@example.com",
                     "password": "TestPass123!",
-                    "grant_type": "password"
-                }
+                    "grant_type": "password",
+                },
             )
 
             assert response.status_code == 403
@@ -165,14 +176,15 @@ class TestOAuth2JWTValidation:
 
         # Create a real JWT token
         token_data = {
-            "sub": str(test_user_in_app["id"]), 
-            "email": test_user_in_app["email"]
+            "sub": str(test_user_in_app["id"]),
+            "email": test_user_in_app["email"],
         }
         access_token = create_access_token(token_data)
 
         # Mock the UserService.get_user method
-        with patch('app.services.user.UserService.get_user') as mock_get_user:
+        with patch("app.services.user.UserService.get_user") as mock_get_user:
             from datetime import datetime, timezone
+
             user_obj = User(
                 id=test_user_in_app["id"],
                 email=test_user_in_app["email"],
@@ -181,7 +193,7 @@ class TestOAuth2JWTValidation:
                 is_active=test_user_in_app["is_active"],
                 is_superuser=test_user_in_app.get("is_superuser", False),
                 created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get_user.return_value = user_obj
 
@@ -210,7 +222,7 @@ class TestOAuth2JWTValidation:
         # Create an expired token
         expired_token = create_access_token(
             data={"sub": "1", "email": "test@example.com"},
-            expires_delta=timedelta(minutes=-1)  # Already expired
+            expires_delta=timedelta(minutes=-1),  # Already expired
         )
 
         headers = {"Authorization": f"Bearer {expired_token}"}
@@ -244,7 +256,7 @@ class TestOAuth2JWTValidation:
         token_data = {"sub": "99999", "email": "nonexistent@example.com"}
         access_token = create_access_token(token_data)
 
-        with patch('app.services.user.UserService.get_user') as mock_get_user:
+        with patch("app.services.user.UserService.get_user") as mock_get_user:
             # Return None to simulate user not found
             mock_get_user.return_value = None
 
@@ -259,14 +271,14 @@ class TestOAuth2JWTValidation:
         token_data = {
             "sub": str(test_user_in_app["id"]),
             "email": test_user_in_app["email"],
-            "name": test_user_in_app["full_name"]
+            "name": test_user_in_app["full_name"],
         }
-        
+
         access_token = create_access_token(token_data)
         decoded_payload = verify_token(access_token)
-        
+
         assert decoded_payload is not None
-        
+
         # Verify OAuth2/OIDC standard claims
         assert "sub" in decoded_payload  # Subject (user ID)
         assert "exp" in decoded_payload  # Expiration time
@@ -275,7 +287,7 @@ class TestOAuth2JWTValidation:
         assert "iss" in decoded_payload  # Issuer
         assert "aud" in decoded_payload  # Audience
         assert "token_type" in decoded_payload  # Token type
-        
+
         # Verify custom claims
         assert decoded_payload["email"] == test_user_in_app["email"]
         assert decoded_payload["name"] == test_user_in_app["full_name"]
@@ -288,15 +300,15 @@ class TestOAuth2JWTValidation:
         custom_expiry = timedelta(minutes=30)
         token_data = {"sub": "1", "email": "test@example.com"}
         access_token = create_access_token(token_data, expires_delta=custom_expiry)
-        
+
         decoded_payload = verify_token(access_token)
         assert decoded_payload is not None
-        
+
         # Check expiration is approximately correct (within 1 minute tolerance)
         exp_timestamp = decoded_payload["exp"]
         expected_exp = datetime.now(timezone.utc) + custom_expiry
         actual_exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-        
+
         time_diff = abs((actual_exp - expected_exp).total_seconds())
         assert time_diff < 60  # Within 1 minute
 
@@ -306,20 +318,14 @@ class TestOAuth2JWTValidation:
         # Missing email
         response = client.post(
             "/api/v1/auth/login",
-            json={
-                "password": "TestPass123!",
-                "grant_type": "password"
-            }
+            json={"password": "TestPass123!", "grant_type": "password"},
         )
         assert response.status_code == 422  # Validation error
 
-        # Missing password  
+        # Missing password
         response = client.post(
             "/api/v1/auth/login",
-            json={
-                "email": "test@example.com",
-                "grant_type": "password"
-            }
+            json={"email": "test@example.com", "grant_type": "password"},
         )
         assert response.status_code == 422  # Validation error
 
@@ -329,8 +335,8 @@ class TestOAuth2JWTValidation:
             json={
                 "email": "not-an-email",
                 "password": "TestPass123!",
-                "grant_type": "password"
-            }
+                "grant_type": "password",
+            },
         )
         assert response.status_code == 422  # Validation error
 
@@ -340,8 +346,8 @@ class TestOAuth2JWTValidation:
             json={
                 "email": "test@example.com",
                 "password": "TestPass123!",
-                "grant_type": "client_credentials"  # Wrong grant type
-            }
+                "grant_type": "client_credentials",  # Wrong grant type
+            },
         )
         assert response.status_code == 422  # Validation error
 
@@ -349,11 +355,15 @@ class TestOAuth2JWTValidation:
         """Test that the same token can be used concurrently."""
 
         # Create a valid token
-        token_data = {"sub": str(test_user_in_app["id"]), "email": test_user_in_app["email"]}
+        token_data = {
+            "sub": str(test_user_in_app["id"]),
+            "email": test_user_in_app["email"],
+        }
         access_token = create_access_token(token_data)
 
-        with patch('app.services.user.UserService.get_user') as mock_get_user:
+        with patch("app.services.user.UserService.get_user") as mock_get_user:
             from datetime import datetime, timezone
+
             user_obj = User(
                 id=test_user_in_app["id"],
                 email=test_user_in_app["email"],
@@ -362,7 +372,7 @@ class TestOAuth2JWTValidation:
                 is_active=test_user_in_app["is_active"],
                 is_superuser=test_user_in_app.get("is_superuser", False),
                 created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get_user.return_value = user_obj
 
@@ -374,7 +384,7 @@ class TestOAuth2JWTValidation:
 
             assert response1.status_code == 200
             assert response2.status_code == 200
-            
+
             # Both should return the same user data
             user_data1 = response1.json()
             user_data2 = response2.json()

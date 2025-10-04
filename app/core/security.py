@@ -18,7 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def create_access_token(
     data: dict[str, Any],
     expires_delta: timedelta | None = None,
-    expires_delta_minutes: int | None = None
+    expires_delta_minutes: int | None = None,
 ) -> str:
     """Create OAuth2-compliant JWT access token."""
     to_encode = data.copy()
@@ -33,14 +33,16 @@ def create_access_token(
         )
 
     # OAuth2/OIDC standard claims
-    to_encode.update({
-        "exp": int(expire.timestamp()),
-        "iat": int(datetime.now(UTC).timestamp()),
-        "nbf": int(datetime.now(UTC).timestamp()),
-        "iss": settings.JWT_ISSUER,  # Token issuer
-        "aud": settings.JWT_AUDIENCE,  # Token audience
-        "token_type": "access_token"
-    })
+    to_encode.update(
+        {
+            "exp": int(expire.timestamp()),
+            "iat": int(datetime.now(UTC).timestamp()),
+            "nbf": int(datetime.now(UTC).timestamp()),
+            "iss": settings.JWT_ISSUER,  # Token issuer
+            "aud": settings.JWT_AUDIENCE,  # Token audience
+            "token_type": "access_token",
+        }
+    )
 
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
@@ -50,9 +52,7 @@ def create_access_token(
 
 def create_refresh_token(user_id: int | str) -> str:
     """Create refresh token for token renewal."""
-    expire = datetime.now(UTC) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     to_encode = {
         "sub": str(user_id),
@@ -60,7 +60,7 @@ def create_refresh_token(user_id: int | str) -> str:
         "iat": int(datetime.now(UTC).timestamp()),
         "iss": settings.JWT_ISSUER,
         "aud": settings.JWT_AUDIENCE,
-        "token_type": "refresh_token"
+        "token_type": "refresh_token",
     }
 
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -69,21 +69,27 @@ def create_refresh_token(user_id: int | str) -> str:
 def generate_pkce_pair() -> tuple[str, str]:
     """Generate PKCE code verifier and challenge for secure OAuth2 flow."""
     # Generate cryptographically random code verifier
-    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+    code_verifier = (
+        base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("utf-8").rstrip("=")
+    )
 
     # Create code challenge using SHA256
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode('utf-8')).digest()
-    ).decode('utf-8').rstrip('=')
+    code_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("utf-8")).digest())
+        .decode("utf-8")
+        .rstrip("=")
+    )
 
     return code_verifier, code_challenge
 
 
 def verify_pkce(code_verifier: str, code_challenge: str) -> bool:
     """Verify PKCE code verifier against challenge."""
-    expected_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode('utf-8')).digest()
-    ).decode('utf-8').rstrip('=')
+    expected_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("utf-8")).digest())
+        .decode("utf-8")
+        .rstrip("=")
+    )
 
     return expected_challenge == code_challenge
 
@@ -96,7 +102,7 @@ def verify_token(token: str, token_type: str = "access_token") -> dict[str, Any]
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
             audience=settings.JWT_AUDIENCE,
-            issuer=settings.JWT_ISSUER
+            issuer=settings.JWT_ISSUER,
         )
 
         # Verify token type
@@ -117,7 +123,7 @@ def decode_token(token: str) -> dict[str, Any] | None:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
             audience=settings.JWT_AUDIENCE,
-            issuer=settings.JWT_ISSUER
+            issuer=settings.JWT_ISSUER,
         )
         return payload
     except JWTError:

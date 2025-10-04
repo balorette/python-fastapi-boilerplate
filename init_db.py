@@ -12,6 +12,7 @@ sys.path.insert(0, str(app_dir.parent))
 from app.core.database import init_database
 import app.models  # noqa: F401  # Ensure models are loaded before table creation
 
+
 async def main():
     """Initialize the database."""
     try:
@@ -20,6 +21,7 @@ async def main():
     except Exception as e:
         print(f"❌ Database initialization failed: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
