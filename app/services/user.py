@@ -93,7 +93,15 @@ class UserService:
     ) -> User:
         """Get a user by ID."""
 
-        user = await self.repository.get(user_id, load_relationships=load_relationships)
+        # Handle both bool and Iterable[str] for load_relationships
+        if isinstance(load_relationships, bool):
+            lr = load_relationships
+        elif isinstance(load_relationships, Iterable) and not isinstance(load_relationships, (str, bytes)):
+            lr = list(load_relationships)
+        else:
+            raise ValueError("load_relationships must be a bool or an iterable of strings")
+
+        user = await self.repository.get(user_id, load_relationships=lr)
         if not user:
             raise NotFoundError(f"User with ID {user_id} not found")
         return user
