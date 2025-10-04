@@ -80,7 +80,8 @@ def test_create_user_password_validation(client: TestClient, auth_headers: dict)
         "is_active": True,
         "is_superuser": False,
     }
-    assert client.post("/api/v1/users/", json=weak_payload, headers=auth_headers).status_code == 422
+    response = client.post("/api/v1/users/", json=weak_payload, headers=auth_headers)
+    assert response.status_code == 422
 
     mismatch_payload = {
         "email": "mismatch@example.com",
