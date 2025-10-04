@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +14,7 @@ from app.core.security import (
     create_refresh_token,
     verify_token,
 )
+from app.models.user import User
 from app.schemas.oauth import (
     AuthorizationResponse,
     LocalLoginRequest,
@@ -71,17 +73,12 @@ class AuthService:
         if not user_id:
             raise AuthenticationError("Authorization code missing subject")
 
-        user = await self.repository.get(int(user_id))
+        user = await self.user_service.get_user(int(user_id))
         if not user:
             raise AuthenticationError("User not found")
 
         access_token = create_access_token(
-            data={
-                "sub": str(user.id),
-                "email": user.email,
-                "name": user.full_name or user.username,
-                "provider": "local",
-            }
+            data=self._build_access_token_claims(user, provider="local")
         )
 
         refresh_token = create_refresh_token(user.id)
@@ -104,12 +101,7 @@ class AuthService:
         user = await self.user_service.authenticate_user(request.email, request.password)
 
         access_token = create_access_token(
-            data={
-                "sub": str(user.id),
-                "email": user.email,
-                "name": user.full_name or user.username,
-                "provider": "local",
-            }
+            data=self._build_access_token_claims(user, provider="local")
         )
 
         refresh_token = create_refresh_token(user.id)
@@ -139,17 +131,15 @@ class AuthService:
         if not user_id:
             raise AuthenticationError("Refresh token missing subject")
 
-        user = await self.repository.get(int(user_id))
+        user = await self.user_service.get_user(int(user_id))
         if not user or not getattr(user, "is_active", False):
             raise AuthenticationError("User not found or inactive")
 
         access_token = create_access_token(
-            data={
-                "sub": str(user.id),
-                "email": user.email,
-                "name": user.full_name or user.username,
-                "provider": getattr(user, "oauth_provider", "local"),
-            }
+            data=self._build_access_token_claims(
+                user,
+                provider=getattr(user, "oauth_provider", "local") or "local"
+            )
         )
 
         rotated_refresh_token = create_refresh_token(user.id)
@@ -165,3 +155,15 @@ class AuthService:
             username=user.username,
             is_new_user=False,
         )
+
+    def _build_access_token_claims(self, user: User, *, provider: str) -> dict[str, Any]:
+        """Build standard claims for JWT access tokens including RBAC context."""
+
+        return {
+            "sub": str(user.id),
+            "email": user.email,
+            "name": user.full_name or user.username,
+            "provider": provider,
+            "roles": user.role_names,
+            "permissions": user.permission_names,
+        }

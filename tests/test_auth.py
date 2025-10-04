@@ -162,16 +162,15 @@ def test_protected_endpoint_without_token(client_with_db: TestClient):
 
 
 def test_protected_endpoint_with_valid_token(client_with_db: TestClient, auth_test_user):
-    """Test accessing protected endpoint with valid token."""
-    # Create a valid token for the user
+    """Non-admin tokens are rejected for admin-only endpoints."""
+
     token = create_access_token(data={"sub": str(auth_test_user.id), "email": auth_test_user.email})
-    
+
     response = client_with_db.get(
         "/api/v1/users/",
         headers={"Authorization": f"Bearer {token}"}
     )
-    # Should not be 401 (unauthorized)
-    assert response.status_code != 401
+    assert response.status_code == 403
 
 
 def test_protected_endpoint_with_invalid_token(client_with_db: TestClient):

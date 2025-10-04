@@ -6,6 +6,7 @@ from typing import Any
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.authz import SystemRole
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -14,6 +15,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.models.user import User
+from app.repositories.role import RoleRepository
 from app.repositories.user import UserRepository
 from app.schemas.oauth import GoogleUserInfo, OAuthUserCreate
 from app.schemas.pagination import (
@@ -33,6 +35,7 @@ class UserService:
 
     def __init__(self, session: AsyncSession):
         self.repository = UserRepository(session)
+        self.role_repository = RoleRepository(session)
 
     def _hash_password(self, password: str) -> str:
         """Hash a password using bcrypt."""
@@ -67,17 +70,25 @@ class UserService:
             raise ConflictError(f"Username {user_data.username} is already taken")
 
         # Create user data
-        user_dict = user_data.model_dump(exclude={'password', 'confirm_password'})
+        user_dict = user_data.model_dump(
+            exclude={'password', 'confirm_password', 'roles', 'role_names'}
+        )
         user_dict['hashed_password'] = self._hash_password(user_data.password)
 
         try:
-            return await self.repository.create(user_dict)
+            user = await self.repository.create(user_dict)
+            await self._assign_roles(
+                user,
+                self._determine_role_names(user.is_superuser, user_data.role_names)
+            )
+            return user
         except Exception as e:
             raise ValidationError(f"Failed to create user: {str(e)}")
 
     async def get_user(self, user_id: int, load_relationships: bool = False) -> User:
         """Get a user by ID."""
-        user = await self.repository.get(user_id, load_relationships=load_relationships)
+        relationships = load_relationships if load_relationships else True
+        user = await self.repository.get(user_id, load_relationships=relationships)
         if not user:
             raise NotFoundError(f"User with ID {user_id} not found")
         return user
@@ -110,7 +121,8 @@ class UserService:
             skip=params.skip,
             limit=params.limit,
             filters=filters,
-            order_by=params.order_by
+            order_by=params.order_by,
+            load_relationships=["roles"]
         )
 
         # Convert to response schema
@@ -162,7 +174,8 @@ class UserService:
             skip=params.skip,
             limit=params.limit,
             filters=filters,
-            order_by=params.order_by or "-created_at"
+            order_by=params.order_by or "-created_at",
+            load_relationships=["roles"]
         )
 
         # Convert to response schema
@@ -215,7 +228,7 @@ class UserService:
         """Update a user with validation."""
         user = await self.get_user(user_id)
 
-        update_dict = user_data.model_dump(exclude_unset=True)
+        update_dict = user_data.model_dump(exclude_unset=True, exclude={"role_names"})
 
         # Validate email uniqueness if being updated
         if 'email' in update_dict:
@@ -236,7 +249,13 @@ class UserService:
                 raise ConflictError(f"Username {update_dict['username']} is already taken")
 
         try:
-            return await self.repository.update(user, update_dict)
+            updated_user = await self.repository.update(user, update_dict)
+            if user_data.role_names is not None:
+                await self._assign_roles(
+                    updated_user,
+                    self._sanitize_role_names(user_data.role_names)
+                )
+            return updated_user
         except Exception as e:
             raise ValidationError(f"Failed to update user: {str(e)}")
 
@@ -310,6 +329,43 @@ class UserService:
 
     # OAuth-specific methods
 
+    def _sanitize_role_names(self, role_names: list[str]) -> list[str]:
+        """Normalize role names to a deterministic, lowercase list."""
+
+        sanitized = {name.strip().lower() for name in role_names if name}
+        return sorted(sanitized)
+
+    def _determine_role_names(
+        self,
+        is_superuser: bool,
+        role_names: list[str] | None,
+    ) -> list[str]:
+        """Determine which roles should be applied to a user."""
+
+        if role_names:
+            return self._sanitize_role_names(role_names)
+
+        default_role = SystemRole.ADMIN.value if is_superuser else SystemRole.MEMBER.value
+        return [default_role]
+
+    async def _assign_roles(self, user: User, role_names: list[str]) -> None:
+        """Assign roles to a user, ensuring they exist."""
+
+        role_names = self._sanitize_role_names(role_names)
+        if not role_names:
+            return
+
+        roles = await self.role_repository.get_by_names(role_names)
+        found_names = {role.name for role in roles}
+        missing = set(role_names) - found_names
+        if missing:
+            missing_list = ", ".join(sorted(missing))
+            raise NotFoundError(f"Roles not found: {missing_list}")
+
+        user.roles = roles
+        await self.repository.session.commit()
+        await self.repository.session.refresh(user)
+
     async def create_oauth_user(self, oauth_data: OAuthUserCreate) -> User:
         """Create a new user from OAuth provider data."""
         # Check if user already exists by email (auto-link accounts)
@@ -322,11 +378,15 @@ class UserService:
         username_seed = self._derive_username_seed(oauth_data.username or oauth_data.email)
         unique_username = await self._ensure_unique_username(username_seed)
 
-        user_dict = oauth_data.model_dump()
+        user_dict = oauth_data.model_dump(exclude={"role_names"})
         user_dict['username'] = unique_username
 
         try:
             user = await self.repository.create(user_dict)
+            await self._assign_roles(
+                user,
+                self._determine_role_names(user.is_superuser, getattr(oauth_data, "role_names", None))
+            )
             return user
         except Exception as e:
             raise ConflictError(f"Failed to create OAuth user: {str(e)}")
@@ -347,6 +407,11 @@ class UserService:
 
         try:
             updated_user = await self.repository.update(user, update_data)
+            if not updated_user.roles:
+                await self._assign_roles(
+                    updated_user,
+                    self._determine_role_names(updated_user.is_superuser, None)
+                )
             return updated_user
         except Exception as e:
             raise ConflictError(f"Failed to link OAuth account: {str(e)}")
