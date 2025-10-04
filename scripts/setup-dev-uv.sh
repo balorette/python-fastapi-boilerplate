@@ -1,86 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Development setup script using uv (fast Python package installer)
-set -e
+set -euo pipefail
+
+if [[ ! -f "pyproject.toml" ]]; then
+    echo "❌ Please run this script from the repository root." >&2
+    exit 1
+fi
 
 echo "🚀 Setting up API development environment with uv..."
 
-# Check if uv is installed
-if ! command -v uv &> /dev/null; then
+if ! command -v uv >/dev/null 2>&1; then
     echo "📦 uv not found. Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.cargo/bin:$PATH"
-    
-    # Check if installation was successful
-    if ! command -v uv &> /dev/null; then
-        echo "❌ Failed to install uv. Please install manually:"
-        echo "   curl -LsSf https://astral.sh/uv/install.sh | sh"
-        echo "   or visit: https://docs.astral.sh/uv/getting-started/installation/"
+
+    if ! command -v uv >/dev/null 2>&1; then
+        cat <<'MSG'
+❌ Failed to install uv automatically.
+   Install manually via:
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+   Documentation: https://docs.astral.sh/uv/getting-started/installation/
+MSG
         exit 1
     fi
 fi
 
 echo "✅ uv found: $(uv --version)"
 
-# Check if Python 3.11+ is available
-python_version=$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1-2)
-required_version="3.11"
+required_python="3.12"
+echo "🐍 Ensuring Python ${required_python} is available via uv..."
+uv python install "${required_python}" >/dev/null 2>&1 || true
 
-if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
-    echo "❌ Python 3.11+ is required. Found: $python_version"
-    echo "💡 Try: uv python install 3.11"
+python_path=$(uv python find "${required_python}")
+if [[ -z "${python_path}" ]]; then
+    echo "❌ Unable to locate Python ${required_python}." >&2
+    echo "   Try: uv python install ${required_python}" >&2
     exit 1
 fi
 
-# Create virtual environment with uv
-echo "📦 Creating virtual environment with uv..."
-uv venv
+echo "📦 Creating virtual environment with uv (${required_python})..."
+uv venv --python "${python_path}"
 
-# Activate virtual environment
 echo "🔄 Activating virtual environment..."
+# shellcheck disable=SC1091
 source .venv/bin/activate
 
-# Install dependencies with uv (much faster than pip)
-echo "📚 Installing dependencies with uv..."
-uv pip install -r requirements.txt
+if [[ -f "uv.lock" ]]; then
+    echo "📚 Installing dependencies with uv sync (including dev extras)..."
+    uv sync --dev
+else
+    echo "📚 Installing dependencies with uv pip..."
+    uv pip install -e ".[dev]"
+fi
 
-# Install development dependencies
-echo "🛠️ Installing development dependencies..."
-uv pip install -e ".[dev]"
-
-# Setup pre-commit hooks
 echo "🔗 Setting up pre-commit hooks..."
-pre-commit install
+uv run pre-commit install
 
-# Copy environment file and setup database
-if [ ! -f .env ]; then
-    echo "📄 Creating .env file..."
+if [[ ! -f .env ]]; then
+    echo "📄 Creating .env file from template..."
     cp .env.example .env
     echo "✅ Using SQLite for development (default)"
-    echo "⚠️ Please review .env file and update if needed"
 else
     echo "📄 .env file already exists"
 fi
 
-# Setup database (defaults to SQLite)
-echo "🗄️ Setting up database..."
+echo "🗄️ Setting up database (SQLite default)..."
 ./scripts/setup-db.sh sqlite
 
-echo "✅ Development environment setup complete!"
-echo ""
-echo "🎯 To activate the environment in the future:"
-echo "   source .venv/bin/activate"
-echo ""
-echo "🚀 To start the development server:"
-echo "   ./scripts/run-dev.sh"
-echo "   or: uv run uvicorn main:app --reload"
-echo ""
-echo "🧪 To run tests:"
-echo "   ./scripts/run-tests.sh"
-echo "   or: uv run pytest"
-echo ""
-echo "💡 uv benefits:"
-echo "   • 10-100x faster than pip"
-echo "   • Better dependency resolution"
-echo "   • Automatic Python version management"
-echo "   • Learn more: https://docs.astral.sh/uv/"
+echo "🧪 Running smoke checks (uv run pytest -m smoke)..."
+uv run pytest -m smoke --maxfail=1
+
+cat <<'MSG'
+✅ Development environment setup complete!
+
+🎯 Activate the environment with:
+   source .venv/bin/activate
+
+🚀 Start the development server with:
+   ./scripts/run-dev.sh
+
+📚 Run the full test suite with:
+   ./scripts/run-tests.sh
+MSG

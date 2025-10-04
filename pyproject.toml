@@ -112,6 +112,9 @@ line-ending = "auto"
 testpaths = ["tests"]
 addopts = "-v --cov=app --cov-report=term-missing --cov-report=html"
 asyncio_mode = "auto"
+markers = [
+    "smoke: Fast-running smoke checks executed during environment bootstrap.",
+]
 
 [tool.coverage.run]
 source = ["app"]

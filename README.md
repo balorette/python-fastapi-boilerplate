@@ -46,14 +46,14 @@ Standard Python tooling (already installed with Python)
 ```bash
 git clone <repository-url>
 cd python-fastapi-boilerplate
-./scripts/setup-dev-uv.sh    # New uv-based setup script
+./scripts/setup-dev-uv.sh    # Bootstraps env + runs smoke tests with uv
 ```
 
 **With traditional tools:**
 ```bash
 git clone <repository-url>
 cd python-fastapi-boilerplate
-./scripts/setup-dev.sh       # Traditional pip + venv setup
+./scripts/setup-dev.sh       # Traditional pip + venv setup + smoke tests
 ```
 
 **Continue with either method:**
@@ -62,7 +62,7 @@ cd python-fastapi-boilerplate
 cp .env.example .env
 # Edit .env with your configuration
 
-# Start the development server
+# Start the development server (smoke tests already ran during setup)
 ./scripts/run-dev.sh
 ```
 
@@ -96,6 +96,9 @@ uv pip install -r requirements.txt
 cp .env.example .env
 ./scripts/setup-db.sh sqlite
 
+# (Optional) Run smoke tests
+uv run pytest -m smoke --maxfail=1
+
 # Start the server
 uv run uvicorn main:app --reload
 ```
@@ -113,9 +116,16 @@ pip install -r requirements.txt
 cp .env.example .env
 ./scripts/setup-db.sh sqlite
 
+# (Optional) Run smoke tests
+pytest -m smoke --maxfail=1
+
 # Start the server
 uvicorn main:app --reload
 ```
+
+## 🧰 Continuous Integration Guide
+
+Looking to wire this project into CI? Start with the step-by-step walkthrough in [`docs/ci/setup.md`](docs/ci/setup.md) for consistent commands to bootstrap a `uv` environment and execute smoke or full pytest suites in automation.
 
 ## 📚 API Documentation
 

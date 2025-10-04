@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -55,6 +56,7 @@ def test_health_summary_hides_process_details_when_not_debug(monkeypatch, client
     assert "process" not in system_check
 
 
+@pytest.mark.smoke
 def test_liveness_probe_returns_current_status(client):
     """Liveness probe should answer quickly with a timestamp."""
 
@@ -66,6 +68,7 @@ def test_liveness_probe_returns_current_status(client):
     datetime.fromisoformat(payload["timestamp"])
 
 
+@pytest.mark.smoke
 def test_readiness_probe_validates_database(client_with_db):
     """Readiness probe should confirm connectivity to the database."""
 

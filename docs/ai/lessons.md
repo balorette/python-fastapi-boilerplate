@@ -15,22 +15,30 @@
 **Key Insight**: Documentation is not overhead—it's the foundation that makes all subsequent work more efficient.
 
 ### 2. Test-Driven Priority Setting
-**Lesson**: A broken test suite blocks all meaningful development  
-**Context**: Discovered all 138 tests failing during assessment  
-**Outcome**: Made test fixes the absolute highest priority  
-**Application**: Always ensure test suite works before implementing new features  
+**Lesson**: A broken test suite blocks all meaningful development
+**Context**: Discovered all 138 tests failing during assessment
+**Outcome**: Made test fixes the absolute highest priority
+**Application**: Always ensure test suite works before implementing new features
 
 **Key Insight**: You cannot improve what you cannot measure. Working tests are essential for confident development.
 
-### 3. Expert Specialization Value
-**Lesson**: Different experts provide complementary insights  
+### 3. Smoke Checks as Onboarding Gatekeepers
+**Lesson**: Lightweight smoke tests baked into setup scripts catch regressions before a dev writes code
+**Context**: New contributors ran setup scripts that now execute `pytest -m smoke`
+**Outcome**: Environment bootstrapping fails fast when core CLI or health endpoints break
+**Application**: Add smoke targets to bootstrap scripts and CI so teams get instant feedback after cloning
+
+**Key Insight**: Treat onboarding scripts as the first CI stage—if smoke checks fail there, the full suite will too.
+
+### 4. Expert Specialization Value
+**Lesson**: Different experts provide complementary insights
 **Context**: Python expert focused on language features, FastAPI expert focused on framework patterns  
 **Outcome**: Comprehensive improvement plan covering both language and framework best practices  
 **Application**: Seek multiple expert perspectives on complex technical decisions  
 
 **Key Insight**: Technical expertise has depth and focus. Multiple experts provide broader, better solutions.
 
-### 4. Phase-Based Implementation
+### 5. Phase-Based Implementation
 **Lesson**: Complex projects benefit from clear phase boundaries  
 **Context**: Could have tried to implement everything at once  
 **Outcome**: Clear roadmap with dependencies and milestones  
