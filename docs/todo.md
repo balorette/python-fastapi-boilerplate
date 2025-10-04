@@ -1,12 +1,12 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.2.0
-**Last Updated**: 2025-10-03
+**Document Version**: 2.3.0
+**Last Updated**: 2025-10-04
 
-> **Status Snapshot (2025-10-03)**
+> **Status Snapshot (2025-10-04)**
 > - `pytest` → **202 passed / 0 failed / 202 total**.
 > - Coverage: **74%** — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities.
-> - Runtime warnings addressed; remaining TODOs focus on coverage, CI automation, and RBAC scaffolding.
+> - Runtime warnings addressed; remaining TODOs focus on coverage, CI automation, and developer documentation refreshes.
 
 The following backlog keeps the boilerplate modular, production-ready, and easy for new teams to adopt. Each section calls out the concrete steps required for completion.
 
@@ -26,11 +26,14 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [x] Fix OAuth login regression tests by seeding SQLite tables in debug fixtures (unblocks `tests/test_debug_oauth.py` and `tests/test_oauth_jwt_validation.py`).
 - [x] Ensure inactive-user flows return consistent 403/401 responses and adjust expectations in OAuth suites once fixtures are stabilised.
 - [x] Consolidate OAuth/JWT validation paths to reuse the provider factory and emit structured errors; align “real” and mock test suites.
-- [ ] Introduce role/permission scaffolding (schema model, token claims, reusable role guard) and cover key admin routes with RBAC tests.
+- [x] Introduce role/permission scaffolding (schema model, token claims, reusable role guard) and cover key admin routes with RBAC tests.
+- [x] Add RBAC dependency guard unit tests to prevent regressions in `require_roles`/`require_permissions`.
+- [ ] Expand RBAC regression coverage for high-traffic admin endpoints and document smoke scenarios.
+- [ ] Document RBAC defaults and seeding expectations in contributor and operations guides.
 
 ## 4. Testing & Tooling Refinement (In Progress)
 - [x] Restore `uv run pytest` to green by addressing remaining OAuth/auth integration failures and flaky fixtures.
-- [ ] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow.
+- [ ] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow (CI workflow in progress).
 - [ ] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
 
