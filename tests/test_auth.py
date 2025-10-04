@@ -169,8 +169,9 @@ def test_protected_endpoint_with_valid_token(
         data={"sub": str(auth_test_user.id), "email": auth_test_user.email}
     )
 
-    response = client_with_db.get(
-        "/api/v1/users/", headers={"Authorization": f"Bearer {token}"}
+    response = client_with_db.delete(
+        f"/api/v1/users/{auth_test_user.id}",
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 403
 

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from sqlalchemy import Result
 
+from app.core.authz import DEFAULT_ROLE_PERMISSIONS, SystemRole
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -16,6 +17,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.models.user import User
+from app.models.role import Permission, Role
 from app.schemas.oauth import GoogleUserInfo, OAuthUserCreate
 from app.schemas.pagination import (
     DateRangeParams,
@@ -44,7 +46,29 @@ class TestUserService:
     @pytest.fixture
     def user_service(self, mock_session):
         """Create UserService instance with mocked session."""
-        return UserService(mock_session)
+        service = UserService(mock_session)
+
+        async def _get_roles_by_names(names: list[str]) -> list[Role]:
+            roles: list[Role] = []
+            for role_name in names:
+                role = Role(name=role_name, description=f"Mock role {role_name}")
+                try:
+                    role_enum = SystemRole(role_name)
+                except ValueError:
+                    permission_values: tuple[str, ...] = ()
+                else:
+                    permission_values = tuple(
+                        permission.value
+                        for permission in DEFAULT_ROLE_PERMISSIONS.get(role_enum, ())
+                    )
+                role.permissions = [
+                    Permission(name=value, description=value) for value in permission_values
+                ]
+                roles.append(role)
+            return roles
+
+        service.role_repository.get_by_names = AsyncMock(side_effect=_get_roles_by_names)
+        return service
 
     @pytest.fixture
     def sample_user(self):
@@ -359,6 +383,7 @@ class TestUserService:
         user_service.repository.exists = AsyncMock(side_effect=[False, False])
 
         new_user = MagicMock()
+        new_user.is_superuser = False
         user_service.repository.create = AsyncMock(return_value=new_user)
 
         google_info = GoogleUserInfo(
@@ -656,7 +681,7 @@ class TestUserService:
         assert result.hashed_password == "hashed_password"
         assert mock_session.execute.call_count == 2  # 2 existence checks only
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        assert mock_session.commit.call_count == 2
 
     @pytest.mark.asyncio
     async def test_create_user_email_exists(self, user_service, mock_session):

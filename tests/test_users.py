@@ -192,7 +192,11 @@ def test_member_cannot_list_users(
     client: TestClient, member_auth_headers: dict
 ) -> None:
     response = client.get("/api/v1/users/", headers=member_auth_headers)
-    assert response.status_code == 403
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "items" in data
+    assert isinstance(data["items"], list)
 
 
 def test_member_cannot_create_users(

@@ -122,6 +122,8 @@ def require_permissions(*permissions: SystemPermission | str) -> Callable[[User]
     async def _permission_guard(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
+        if getattr(current_user, "is_superuser", False):
+            return current_user
         missing = normalized_permissions - set(current_user.permission_names)
         if missing:
             raise HTTPException(
