@@ -31,7 +31,9 @@ DEFAULT_ROLE_PERMISSIONS: dict[SystemRole, tuple[SystemPermission, ...]] = {
         SystemPermission.USERS_READ,
         SystemPermission.USERS_MANAGE,
     ),
-    SystemRole.MEMBER: (),
+    SystemRole.MEMBER: (
+        SystemPermission.USERS_READ,
+    ),
 }
 
 

@@ -5,6 +5,7 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -41,6 +42,7 @@ def create_access_token(
             "iss": settings.JWT_ISSUER,  # Token issuer
             "aud": settings.JWT_AUDIENCE,  # Token audience
             "token_type": "access_token",
+            "jti": uuid4().hex,
         }
     )
 
@@ -61,6 +63,7 @@ def create_refresh_token(user_id: int | str) -> str:
         "iss": settings.JWT_ISSUER,
         "aud": settings.JWT_AUDIENCE,
         "token_type": "refresh_token",
+        "jti": uuid4().hex,
     }
 
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
