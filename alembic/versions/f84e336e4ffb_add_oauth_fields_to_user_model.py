@@ -1,7 +1,7 @@
 """Create users table with OAuth support
 
 Revision ID: f84e336e4ffb
-Revises: 
+Revises:
 Create Date: 2025-09-23 17:09:10.155034
 """
 
@@ -26,7 +26,9 @@ def upgrade() -> None:
         sa.Column("hashed_password", sa.String(length=255), nullable=True),
         sa.Column("full_name", sa.String(length=255), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("is_superuser", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "is_superuser", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
         sa.Column("oauth_provider", sa.String(length=50), nullable=True),
         sa.Column("oauth_id", sa.String(length=255), nullable=True),
         sa.Column("oauth_email_verified", sa.Boolean(), nullable=True),

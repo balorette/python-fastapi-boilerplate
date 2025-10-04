@@ -3,6 +3,7 @@
 Demo OAuth server to test Google OAuth implementation
 Run this to test the OAuth endpoints locally
 """
+
 import asyncio
 import uvicorn
 from app.main import app
@@ -26,11 +27,7 @@ if __name__ == "__main__":
     print("3. After Google redirect, exchange the code via POST /api/v1/auth/token")
     print("4. Set up your Google OAuth credentials first!")
     print("=" * 50)
-    
+
     uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
+        "app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
     )

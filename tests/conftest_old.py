@@ -19,17 +19,14 @@ ASYNC_SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./test_async.db"
 
 # Sync engine for setup/teardown
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
+    SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
-    echo=False  # Disable echo for tests
+    echo=False,  # Disable echo for tests
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Async engine for testing
-async_engine = create_async_engine(
-    ASYNC_SQLALCHEMY_DATABASE_URL,
-    echo=False
-)
+async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=False)
 AsyncTestingSessionLocal = async_sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
@@ -84,10 +81,10 @@ def client():
     """Create test client."""
     Base.metadata.create_all(bind=engine)
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     Base.metadata.drop_all(bind=engine)
 
 
@@ -96,8 +93,7 @@ def auth_headers(client):
     """Get authentication headers for testing."""
     # Login to get token
     response = client.post(
-        "/api/v1/auth/login",
-        data={"username": "admin", "password": "admin"}
+        "/api/v1/auth/login", data={"username": "admin", "password": "admin"}
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

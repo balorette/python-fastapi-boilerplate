@@ -39,8 +39,7 @@ async def ensure_default_roles(session: AsyncSession) -> None:
     """Ensure the default roles and permissions exist in the database."""
 
     existing_permissions = {
-        name: perm
-        for name, perm in await _fetch_existing_permissions(session)
+        name: perm for name, perm in await _fetch_existing_permissions(session)
     }
 
     for permission in SystemPermission:
@@ -55,13 +54,16 @@ async def ensure_default_roles(session: AsyncSession) -> None:
 
     for role in SystemRole:
         if role.value not in existing_roles:
-            session.add(Role(name=role.value, description=f"System role: {role.name.title()}"))
+            session.add(
+                Role(name=role.value, description=f"System role: {role.name.title()}")
+            )
 
     await session.flush()
 
     # Refresh role assignments to ensure permissions are linked correctly.
     permission_lookup = {
-        permission.name: permission for permission in await _fetch_all_permissions(session)
+        permission.name: permission
+        for permission in await _fetch_all_permissions(session)
     }
     role_lookup = {role.name: role for role in await _fetch_all_roles(session)}
 
@@ -78,7 +80,9 @@ async def ensure_default_roles(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def _fetch_existing_permissions(session: AsyncSession) -> list[tuple[str, Permission]]:
+async def _fetch_existing_permissions(
+    session: AsyncSession,
+) -> list[tuple[str, Permission]]:
     result = await session.execute(select(Permission))
     return [(permission.name, permission) for permission in result.scalars().all()]
 

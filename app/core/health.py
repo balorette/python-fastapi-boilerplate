@@ -29,9 +29,7 @@ async def get_system_health() -> Dict[str, Any]:
             "enabled": settings.safety_checks_enabled,
         },
         "prometheus_metrics": {
-            "status": "healthy"
-            if settings.prometheus_metrics_enabled
-            else "degraded",
+            "status": "healthy" if settings.prometheus_metrics_enabled else "degraded",
             "enabled": settings.prometheus_metrics_enabled,
         },
     }

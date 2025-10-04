@@ -102,7 +102,9 @@ class AuthService:
     async def login_local(self, request: LocalLoginRequest) -> TokenResponse:
         """Authenticate a local user and update their last_login timestamp."""
 
-        user = await self.user_service.authenticate_user(request.email, request.password)
+        user = await self.user_service.authenticate_user(
+            request.email, request.password
+        )
 
         access_token = create_access_token(
             data=self._build_access_token_claims(user, provider="local")
@@ -148,8 +150,7 @@ class AuthService:
 
         access_token = create_access_token(
             data=self._build_access_token_claims(
-                user,
-                provider=getattr(user, "oauth_provider", "local") or "local"
+                user, provider=getattr(user, "oauth_provider", "local") or "local"
             )
         )
 
@@ -167,7 +168,9 @@ class AuthService:
             is_new_user=False,
         )
 
-    def _build_access_token_claims(self, user: User, *, provider: str) -> dict[str, Any]:
+    def _build_access_token_claims(
+        self, user: User, *, provider: str
+    ) -> dict[str, Any]:
         """Build standard claims for JWT access tokens including RBAC context."""
 
         return {

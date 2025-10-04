@@ -57,7 +57,9 @@ def test_metrics_endpoint_logs_warning_when_dependency_missing(monkeypatch, capl
     app = FastAPI()
     warnings: list[str] = []
 
-    monkeypatch.setattr(metrics.logger, "warning", lambda message: warnings.append(message))
+    monkeypatch.setattr(
+        metrics.logger, "warning", lambda message: warnings.append(message)
+    )
 
     attach_metrics_endpoint(app)
 

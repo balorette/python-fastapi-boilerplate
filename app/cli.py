@@ -5,7 +5,11 @@ import getpass
 
 import typer
 
-from app.core.database import get_async_db_context, close_database_connections, init_database
+from app.core.database import (
+    get_async_db_context,
+    close_database_connections,
+    init_database,
+)
 from app.core.exceptions import ConflictError
 from app.schemas.user import UserCreate
 from app.services.user import UserService
@@ -14,10 +18,7 @@ app = typer.Typer()
 
 
 async def create_admin_user(
-    username: str,
-    email: str,
-    password: str,
-    full_name: str | None = None
+    username: str, email: str, password: str, full_name: str | None = None
 ) -> None:
     """Create an admin user using enhanced database context."""
     async with get_async_db_context() as session:
@@ -32,7 +33,7 @@ async def create_admin_user(
                 confirm_password=password,
                 full_name=full_name or f"Admin {username}",
                 is_superuser=True,
-                is_active=True
+                is_active=True,
             )
 
             # Create the admin user
@@ -55,9 +56,13 @@ async def create_admin_user(
 def init_admin(
     username: str = typer.Option(..., "--username", "-u", help="Admin username"),
     email: str = typer.Option(..., "--email", "-e", help="Admin email"),
-    password: str | None = typer.Option(None, "--password", "-p", help="Admin password (will prompt if not provided)"),
-    full_name: str | None = typer.Option(None, "--full-name", "-n", help="Admin full name"),
-    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt")
+    password: str | None = typer.Option(
+        None, "--password", "-p", help="Admin password (will prompt if not provided)"
+    ),
+    full_name: str | None = typer.Option(
+        None, "--full-name", "-n", help="Admin full name"
+    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
 ) -> None:
     """Create an initial admin user."""
 
@@ -119,8 +124,12 @@ def init_db():
 def setup(
     username: str = typer.Option("admin", "--username", "-u", help="Admin username"),
     email: str = typer.Option("admin@example.com", "--email", "-e", help="Admin email"),
-    password: str | None = typer.Option(None, "--password", "-p", help="Admin password (will prompt if not provided)"),
-    full_name: str | None = typer.Option("System Administrator", "--full-name", "-n", help="Admin full name"),
+    password: str | None = typer.Option(
+        None, "--password", "-p", help="Admin password (will prompt if not provided)"
+    ),
+    full_name: str | None = typer.Option(
+        "System Administrator", "--full-name", "-n", help="Admin full name"
+    ),
 ) -> None:
     """Complete setup: initialize database and create admin user."""
 

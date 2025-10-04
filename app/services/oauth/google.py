@@ -23,18 +23,14 @@ class GoogleOAuthProvider(BaseOAuthProvider):
         self.auth_uri = "https://accounts.google.com/o/oauth2/auth"
         self.token_uri = "https://oauth2.googleapis.com/token"
         self.userinfo_uri = "https://www.googleapis.com/oauth2/v2/userinfo"
-        self.scopes = [
-            "openid",
-            "profile",
-            "email"
-        ]
+        self.scopes = ["openid", "profile", "email"]
 
     async def get_authorization_url(
         self,
         redirect_uri: str,
         state: str,
         scope: str | None = None,
-        code_challenge: str | None = None
+        code_challenge: str | None = None,
     ) -> str:
         """Generate Google OAuth authorization URL with PKCE support."""
         params = {
@@ -49,18 +45,14 @@ class GoogleOAuthProvider(BaseOAuthProvider):
 
         # Add PKCE parameters if provided
         if code_challenge:
-            params.update({
-                "code_challenge": code_challenge,
-                "code_challenge_method": "S256"
-            })
+            params.update(
+                {"code_challenge": code_challenge, "code_challenge_method": "S256"}
+            )
 
         return f"{self.auth_uri}?{urlencode(params)}"
 
     async def exchange_code_for_tokens(
-        self,
-        code: str,
-        redirect_uri: str,
-        code_verifier: str | None = None
+        self, code: str, redirect_uri: str, code_verifier: str | None = None
     ) -> dict[str, Any]:
         """Exchange authorization code for access tokens."""
         data = {
@@ -91,9 +83,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
             # Use asyncio to run the sync validation in a thread
             def _validate():
                 return id_token.verify_oauth2_token(
-                    id_token_str,
-                    google_requests.Request(),
-                    self.client_id
+                    id_token_str, google_requests.Request(), self.client_id
                 )
 
             loop = asyncio.get_event_loop()

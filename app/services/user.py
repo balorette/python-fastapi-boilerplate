@@ -54,7 +54,9 @@ class UserService:
         """Ensure the generated username is unique, appending a suffix if needed."""
         candidate = seed
         suffix = 1
-        while await self.repository.exists(field_name="username", field_value=candidate):
+        while await self.repository.exists(
+            field_name="username", field_value=candidate
+        ):
             candidate = f"{seed}{suffix}"
             suffix += 1
         return candidate
@@ -62,24 +64,28 @@ class UserService:
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with validation."""
         # Check if email already exists
-        if await self.repository.exists(field_name="email", field_value=user_data.email):
+        if await self.repository.exists(
+            field_name="email", field_value=user_data.email
+        ):
             raise ConflictError(f"Email {user_data.email} is already registered")
 
         # Check if username already exists
-        if await self.repository.exists(field_name="username", field_value=user_data.username):
+        if await self.repository.exists(
+            field_name="username", field_value=user_data.username
+        ):
             raise ConflictError(f"Username {user_data.username} is already taken")
 
         # Create user data
         user_dict = user_data.model_dump(
-            exclude={'password', 'confirm_password', 'roles', 'role_names'}
+            exclude={"password", "confirm_password", "roles", "role_names"}
         )
-        user_dict['hashed_password'] = self._hash_password(user_data.password)
+        user_dict["hashed_password"] = self._hash_password(user_data.password)
 
         try:
             user = await self.repository.create(user_dict)
             await self._assign_roles(
                 user,
-                self._determine_role_names(user.is_superuser, user_data.role_names)
+                self._determine_role_names(user.is_superuser, user_data.role_names),
             )
             return user
         except Exception as e:
@@ -96,10 +102,14 @@ class UserService:
         # Handle both bool and Iterable[str] for load_relationships
         if isinstance(load_relationships, bool):
             lr = load_relationships
-        elif isinstance(load_relationships, Iterable) and not isinstance(load_relationships, (str, bytes)):
+        elif isinstance(load_relationships, Iterable) and not isinstance(
+            load_relationships, (str, bytes)
+        ):
             lr = list(load_relationships)
         else:
-            raise ValueError("load_relationships must be a bool or an iterable of strings")
+            raise ValueError(
+                "load_relationships must be a bool or an iterable of strings"
+            )
 
         user = await self.repository.get(user_id, load_relationships=lr)
         if not user:
@@ -137,9 +147,7 @@ class UserService:
         return user
 
     async def get_users_paginated(
-        self,
-        params: PaginationParams,
-        filters: dict[str, Any] | None = None
+        self, params: PaginationParams, filters: dict[str, Any] | None = None
     ) -> PaginatedResponse[UserResponse]:
         """Get paginated list of users."""
         # Get total count
@@ -151,49 +159,42 @@ class UserService:
             limit=params.limit,
             filters=filters,
             order_by=params.order_by,
-            load_relationships=["roles"]
+            load_relationships=["roles"],
         )
 
         # Convert to response schema
         user_responses = [UserResponse.model_validate(user) for user in users]
 
         return PaginatedResponse.create(
-            items=user_responses,
-            total=total,
-            skip=params.skip,
-            limit=params.limit
+            items=user_responses, total=total, skip=params.skip, limit=params.limit
         )
 
-    async def search_users(self, params: SearchParams) -> PaginatedResponse[UserResponse]:
+    async def search_users(
+        self, params: SearchParams
+    ) -> PaginatedResponse[UserResponse]:
         """Search users with pagination."""
         # Count search results
         search_users = await self.repository.search_users(
             query=params.query,
             skip=0,
-            limit=10000  # Get all for counting
+            limit=10000,  # Get all for counting
         )
         total = len(search_users)
 
         # Get paginated results
         users = await self.repository.search_users(
-            query=params.query,
-            skip=params.skip,
-            limit=params.limit
+            query=params.query, skip=params.skip, limit=params.limit
         )
 
         # Convert to response schema
         user_responses = [UserResponse.model_validate(user) for user in users]
 
         return PaginatedResponse.create(
-            items=user_responses,
-            total=total,
-            skip=params.skip,
-            limit=params.limit
+            items=user_responses, total=total, skip=params.skip, limit=params.limit
         )
 
     async def get_active_users_paginated(
-        self,
-        params: PaginationParams
+        self, params: PaginationParams
     ) -> PaginatedResponse[UserResponse]:
         """Get paginated list of active users."""
         filters = {"is_active": True}
@@ -204,34 +205,29 @@ class UserService:
             limit=params.limit,
             filters=filters,
             order_by=params.order_by or "-created_at",
-            load_relationships=["roles"]
+            load_relationships=["roles"],
         )
 
         # Convert to response schema
         user_responses = [UserResponse.model_validate(user) for user in users]
 
         return PaginatedResponse.create(
-            items=user_responses,
-            total=total,
-            skip=params.skip,
-            limit=params.limit
+            items=user_responses, total=total, skip=params.skip, limit=params.limit
         )
 
     async def get_users_by_date_range(
-        self,
-        date_params: DateRangeParams,
-        pagination_params: PaginationParams
+        self, date_params: DateRangeParams, pagination_params: PaginationParams
     ) -> PaginatedResponse[UserResponse]:
         """Get users created within a date range."""
         # Count users in date range
         filters = {}
         if date_params.start_date:
-            filters['created_at'] = {'gte': date_params.start_date}
+            filters["created_at"] = {"gte": date_params.start_date}
         if date_params.end_date:
-            if 'created_at' in filters:
-                filters['created_at']['lte'] = date_params.end_date
+            if "created_at" in filters:
+                filters["created_at"]["lte"] = date_params.end_date
             else:
-                filters['created_at'] = {'lte': date_params.end_date}
+                filters["created_at"] = {"lte": date_params.end_date}
 
         total = await self.repository.count_records(filters)
 
@@ -240,7 +236,7 @@ class UserService:
             start_date=date_params.start_date,
             end_date=date_params.end_date,
             skip=pagination_params.skip,
-            limit=pagination_params.limit
+            limit=pagination_params.limit,
         )
 
         # Convert to response schema
@@ -250,7 +246,7 @@ class UserService:
             items=user_responses,
             total=total,
             skip=pagination_params.skip,
-            limit=pagination_params.limit
+            limit=pagination_params.limit,
         )
 
     async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
@@ -260,35 +256,38 @@ class UserService:
         update_dict = user_data.model_dump(exclude_unset=True, exclude={"role_names"})
 
         # Validate email uniqueness if being updated
-        if 'email' in update_dict:
+        if "email" in update_dict:
             if await self.repository.exists(
-                field_name='email',
-                field_value=update_dict['email'],
+                field_name="email",
+                field_value=update_dict["email"],
                 exclude_id=user_id,
             ):
                 raise ConflictError(f"Email {update_dict['email']} is already in use")
 
         # Validate username uniqueness if being updated
-        if 'username' in update_dict:
+        if "username" in update_dict:
             if await self.repository.exists(
-                field_name='username',
-                field_value=update_dict['username'],
+                field_name="username",
+                field_value=update_dict["username"],
                 exclude_id=user_id,
             ):
-                raise ConflictError(f"Username {update_dict['username']} is already taken")
+                raise ConflictError(
+                    f"Username {update_dict['username']} is already taken"
+                )
 
         try:
             updated_user = await self.repository.update(user, update_dict)
             if user_data.role_names is not None:
                 await self._assign_roles(
-                    updated_user,
-                    self._sanitize_role_names(user_data.role_names)
+                    updated_user, self._sanitize_role_names(user_data.role_names)
                 )
             return updated_user
         except Exception as e:
             raise ValidationError(f"Failed to update user: {str(e)}")
 
-    async def update_password(self, user_id: int, password_data: UserPasswordUpdate) -> User:
+    async def update_password(
+        self, user_id: int, password_data: UserPasswordUpdate
+    ) -> User:
         """Update user password with current password verification."""
         user = await self.get_user(user_id)
 
@@ -297,11 +296,15 @@ class UserService:
             raise ValidationError("Cannot update password for OAuth-only users")
 
         # Verify current password
-        if not self._verify_password(password_data.current_password, user.hashed_password):
+        if not self._verify_password(
+            password_data.current_password, user.hashed_password
+        ):
             raise AuthenticationError("Current password is incorrect")
 
         # Update password
-        update_dict = {'hashed_password': self._hash_password(password_data.new_password)}
+        update_dict = {
+            "hashed_password": self._hash_password(password_data.new_password)
+        }
 
         try:
             return await self.repository.update(user, update_dict)
@@ -324,7 +327,7 @@ class UserService:
         if user.is_active:
             return user  # Already active
 
-        return await self.repository.update(user, {'is_active': True})
+        return await self.repository.update(user, {"is_active": True})
 
     async def deactivate_user(self, user_id: int) -> User:
         """Deactivate a user account."""
@@ -332,7 +335,7 @@ class UserService:
         if not user.is_active:
             return user  # Already inactive
 
-        return await self.repository.update(user, {'is_active': False})
+        return await self.repository.update(user, {"is_active": False})
 
     async def authenticate_user(self, username: str, password: str) -> User:
         """Authenticate a user by username/email and password."""
@@ -352,7 +355,9 @@ class UserService:
             raise AuthenticationError("Invalid credentials")
 
         if not user.hashed_password:
-            raise AuthenticationError("This account uses OAuth login. Please use Google Sign-In.")
+            raise AuthenticationError(
+                "This account uses OAuth login. Please use Google Sign-In."
+            )
 
         if not self._verify_password(password, user.hashed_password):
             raise AuthenticationError("Invalid credentials")
@@ -380,7 +385,9 @@ class UserService:
         if role_names:
             return self._sanitize_role_names(role_names)
 
-        default_role = SystemRole.ADMIN.value if is_superuser else SystemRole.MEMBER.value
+        default_role = (
+            SystemRole.ADMIN.value if is_superuser else SystemRole.MEMBER.value
+        )
         return [default_role]
 
     async def _assign_roles(self, user: User, role_names: list[str]) -> None:
@@ -410,34 +417,40 @@ class UserService:
             # Link OAuth account to existing user
             return await self.link_oauth_account(existing_user.id, oauth_data)
 
-        username_seed = self._derive_username_seed(oauth_data.username or oauth_data.email)
+        username_seed = self._derive_username_seed(
+            oauth_data.username or oauth_data.email
+        )
         unique_username = await self._ensure_unique_username(username_seed)
 
         user_dict = oauth_data.model_dump(exclude={"role_names"})
-        user_dict['username'] = unique_username
+        user_dict["username"] = unique_username
 
         try:
             user = await self.repository.create(user_dict)
             await self._assign_roles(
                 user,
-                self._determine_role_names(user.is_superuser, getattr(oauth_data, "role_names", None))
+                self._determine_role_names(
+                    user.is_superuser, getattr(oauth_data, "role_names", None)
+                ),
             )
             return user
         except Exception as e:
             raise ConflictError(f"Failed to create OAuth user: {str(e)}")
 
-    async def link_oauth_account(self, user_id: int, oauth_data: OAuthUserCreate) -> User:
+    async def link_oauth_account(
+        self, user_id: int, oauth_data: OAuthUserCreate
+    ) -> User:
         """Link OAuth provider to existing user account."""
         user = await self.get_user(user_id)
 
         # Update user with OAuth information
         update_data = {
-            'oauth_provider': oauth_data.oauth_provider,
-            'oauth_id': oauth_data.oauth_id,
-            'oauth_email_verified': oauth_data.oauth_email_verified,
-            'oauth_refresh_token': oauth_data.oauth_refresh_token,
+            "oauth_provider": oauth_data.oauth_provider,
+            "oauth_id": oauth_data.oauth_id,
+            "oauth_email_verified": oauth_data.oauth_email_verified,
+            "oauth_refresh_token": oauth_data.oauth_refresh_token,
             # Update name if not set or if OAuth provides more complete info
-            'full_name': oauth_data.full_name if not user.full_name else user.full_name
+            "full_name": oauth_data.full_name if not user.full_name else user.full_name,
         }
 
         try:
@@ -445,7 +458,7 @@ class UserService:
             if not updated_user.roles:
                 await self._assign_roles(
                     updated_user,
-                    self._determine_role_names(updated_user.is_superuser, None)
+                    self._determine_role_names(updated_user.is_superuser, None),
                 )
             return updated_user
         except Exception as e:
@@ -465,9 +478,11 @@ class UserService:
             load_role_hierarchy=include_role_hierarchy,
         )
 
-    async def create_or_update_oauth_user(self, google_user_info: GoogleUserInfo, refresh_token: str | None = None) -> tuple[User, bool]:
+    async def create_or_update_oauth_user(
+        self, google_user_info: GoogleUserInfo, refresh_token: str | None = None
+    ) -> tuple[User, bool]:
         """Create or update user from Google OAuth info.
-        
+
         Returns:
             tuple: (user, is_new_user)
         """
@@ -477,10 +492,10 @@ class UserService:
         if existing_user:
             # Update existing OAuth user
             update_data = {
-                'full_name': google_user_info.name,
-                'oauth_email_verified': google_user_info.verified_email,
-                'oauth_refresh_token': refresh_token,
-                'is_active': True  # Reactivate if deactivated
+                "full_name": google_user_info.name,
+                "oauth_email_verified": google_user_info.verified_email,
+                "oauth_refresh_token": refresh_token,
+                "is_active": True,  # Reactivate if deactivated
             }
 
             try:
@@ -501,7 +516,7 @@ class UserService:
             oauth_email_verified=google_user_info.verified_email,
             oauth_refresh_token=refresh_token,
             is_active=True,
-            is_superuser=False
+            is_superuser=False,
         )
 
         # Create or link user
@@ -517,7 +532,9 @@ class UserService:
         )
 
         if not user:
-            raise AuthenticationError(f"No user found for {oauth_provider} ID: {oauth_id}")
+            raise AuthenticationError(
+                f"No user found for {oauth_provider} ID: {oauth_id}"
+            )
 
         if not user.is_active:
             raise AuthenticationError("User account is deactivated")
@@ -527,21 +544,22 @@ class UserService:
     async def get_user_stats(self) -> dict[str, int]:
         """Get user statistics."""
         total_users = await self.repository.count_records()
-        active_users = await self.repository.count_records({'is_active': True})
+        active_users = await self.repository.count_records({"is_active": True})
         inactive_users = total_users - active_users
-        superusers = await self.repository.count_records({'is_superuser': True})
+        superusers = await self.repository.count_records({"is_superuser": True})
 
         # Recent registrations (last 30 days)
         from datetime import datetime, timedelta
+
         thirty_days_ago = (datetime.now(UTC) - timedelta(days=30)).isoformat()
-        recent_registrations = await self.repository.count_records({
-            'created_at': {'gte': thirty_days_ago}
-        })
+        recent_registrations = await self.repository.count_records(
+            {"created_at": {"gte": thirty_days_ago}}
+        )
 
         return {
-            'total_users': total_users,
-            'active_users': active_users,
-            'inactive_users': inactive_users,
-            'superusers': superusers,
-            'recent_registrations': recent_registrations
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": inactive_users,
+            "superusers": superusers,
+            "recent_registrations": recent_registrations,
         }

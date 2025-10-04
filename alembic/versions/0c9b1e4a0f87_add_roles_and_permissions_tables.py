@@ -19,8 +19,19 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("description", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), server_onupdate=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+            server_onupdate=sa.func.now(),
+        ),
     )
     op.create_index(op.f("ix_permissions_name"), "permissions", ["name"], unique=True)
 
@@ -29,8 +40,19 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("name", sa.String(length=64), nullable=False),
         sa.Column("description", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), server_onupdate=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+            server_onupdate=sa.func.now(),
+        ),
     )
     op.create_index(op.f("ix_roles_name"), "roles", ["name"], unique=True)
 
@@ -38,7 +60,9 @@ def upgrade() -> None:
         "role_permissions",
         sa.Column("role_id", sa.Integer(), nullable=False),
         sa.Column("permission_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["permission_id"], ["permissions.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["permission_id"], ["permissions.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["role_id"], ["roles.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("role_id", "permission_id"),
     )
@@ -78,7 +102,10 @@ def _seed_default_permissions() -> None:
         permissions_table,
         [
             {"name": "users:read", "description": "Read user records"},
-            {"name": "users:manage", "description": "Create, update, and delete user records"},
+            {
+                "name": "users:manage",
+                "description": "Create, update, and delete user records",
+            },
         ],
     )
 
@@ -105,9 +132,7 @@ def _link_default_role_permissions() -> None:
 
     permission_lookup = _fetch_lookup(
         bind.execute(
-            sa.text(
-                "SELECT id, name FROM permissions WHERE name IN (:read, :manage)"
-            ),
+            sa.text("SELECT id, name FROM permissions WHERE name IN (:read, :manage)"),
             {"read": "users:read", "manage": "users:manage"},
         ).fetchall()
     )
@@ -139,7 +164,9 @@ def _link_default_role_permissions() -> None:
     )
 
 
-def _fetch_lookup(rows: Sequence[Mapping[str, int] | tuple[int, str]]) -> dict[str, int]:
+def _fetch_lookup(
+    rows: Sequence[Mapping[str, int] | tuple[int, str]],
+) -> dict[str, int]:
     lookup: dict[str, int] = {}
     for row in rows:
         if isinstance(row, Mapping):

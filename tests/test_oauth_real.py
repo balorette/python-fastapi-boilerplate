@@ -12,7 +12,9 @@ from app.models.user import User
 class TestOAuth2RealAuth:
     """Exercise key authentication scenarios against the FastAPI app."""
 
-    async def test_oauth_login_success_with_real_jwt(self, client_with_real_db, sample_user_in_db):
+    async def test_oauth_login_success_with_real_jwt(
+        self, client_with_real_db, sample_user_in_db
+    ):
         response = client_with_real_db.post(
             "/api/v1/auth/login",
             json={
@@ -54,7 +56,9 @@ class TestOAuth2RealAuth:
             "created_at": now,
             "updated_at": now,
         }
-        access_token = create_access_token({"sub": str(test_user["id"]), "email": test_user["email"]})
+        access_token = create_access_token(
+            {"sub": str(test_user["id"]), "email": test_user["email"]}
+        )
         with patch("app.services.user.UserService.get_user") as mock_get_user:
             mock_get_user.return_value = User(**test_user)
             response = client.get(
@@ -73,6 +77,7 @@ class TestOAuth2RealAuth:
 
     def test_expired_jwt_token(self, client: TestClient):
         from datetime import timedelta
+
         token = create_access_token(
             data={"sub": "1", "email": "test@example.com"},
             expires_delta=timedelta(seconds=-1),
@@ -106,10 +111,17 @@ class TestOAuth2RealAuth:
         assert refreshed["user_id"] == sample_user_in_db.id
         assert refreshed["access_token"] != login_response.json()["access_token"]
 
-    async def test_user_deactivation_blocks_access(self, client_with_real_db, sample_user_in_db, async_db_session):
-        token = create_access_token({"sub": str(sample_user_in_db.id), "email": sample_user_in_db.email})
+    async def test_user_deactivation_blocks_access(
+        self, client_with_real_db, sample_user_in_db, async_db_session
+    ):
+        token = create_access_token(
+            {"sub": str(sample_user_in_db.id), "email": sample_user_in_db.email}
+        )
         headers = {"Authorization": f"Bearer {token}"}
-        assert client_with_real_db.get("/api/v1/users/me", headers=headers).status_code == 200
+        assert (
+            client_with_real_db.get("/api/v1/users/me", headers=headers).status_code
+            == 200
+        )
         sample_user_in_db.is_active = False
         async_db_session.add(sample_user_in_db)
         await async_db_session.commit()
@@ -132,7 +144,11 @@ class TestOAuth2RealAuth:
         ).status_code in (400, 422)
         assert client.post(
             "/api/v1/auth/login",
-            json={"email": "invalid-email", "password": "TestPass123!", "grant_type": "password"},
+            json={
+                "email": "invalid-email",
+                "password": "TestPass123!",
+                "grant_type": "password",
+            },
         ).status_code in (400, 422)
 
     def test_concurrent_token_usage(self, client: TestClient):
@@ -148,7 +164,9 @@ class TestOAuth2RealAuth:
             "created_at": current,
             "updated_at": current,
         }
-        token = create_access_token({"sub": str(user_data["id"]), "email": user_data["email"]})
+        token = create_access_token(
+            {"sub": str(user_data["id"]), "email": user_data["email"]}
+        )
         with patch("app.services.user.UserService.get_user") as mock_get_user:
             mock_get_user.return_value = User(**user_data)
             headers = {"Authorization": f"Bearer {token}"}
