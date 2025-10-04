@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, StaticPool
 from sqlalchemy.exc import DisconnectionError, OperationalError
 
+from app.core.authz import ensure_default_roles
 from app.core.config import settings
 from app.models.base import Base
 import app.models  # noqa: F401  # Ensure models are registered with SQLAlchemy metadata
@@ -270,7 +271,11 @@ async def init_database():
             raise RuntimeError("Database health check failed")
         
         await create_tables()
-        
+
+        # Seed default roles and permissions for RBAC
+        async with AsyncSessionLocal() as session:
+            await ensure_default_roles(session)
+
         logger.info(f"✅ Database initialized successfully using {settings.DATABASE_TYPE}")
         
         if settings.is_sqlite:

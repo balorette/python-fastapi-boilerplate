@@ -4,7 +4,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_current_active_user, get_user_service
+from app.api.dependencies import (
+    get_current_active_user,
+    get_user_service,
+    require_permissions,
+)
+from app.core.authz import SystemPermission
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models.user import User
 from app.schemas.pagination import PaginatedResponse, PaginationParams
@@ -28,7 +33,7 @@ async def get_users(
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
     """Get paginated list of users."""
     try:
@@ -43,7 +48,7 @@ async def get_users(
 async def create_user(
     user: UserCreate,
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_MANAGE)),
 ) -> Any:
     """Create a new user."""
     try:
@@ -59,7 +64,7 @@ async def create_user(
 async def get_user(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_MANAGE)),
 ) -> Any:
     """Get user by ID."""
     try:
@@ -74,7 +79,7 @@ async def update_user(
     user_id: int,
     user_update: UserUpdate,
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_MANAGE)),
 ) -> Any:
     """Update user by ID."""
     try:
@@ -92,7 +97,7 @@ async def update_user(
 async def delete_user(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_MANAGE)),
 ) -> None:
     """Delete user by ID."""
     try:
@@ -107,7 +112,7 @@ async def search_users(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
     """Search users by username or email."""
     try:
@@ -125,7 +130,7 @@ async def get_active_users(
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     order_by: str = Query(None, description="Field to order by (prefix with - for desc)"),
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(get_current_active_user),
+    _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
     """Get paginated list of active users only."""
     try:

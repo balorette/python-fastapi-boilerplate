@@ -2,8 +2,9 @@
 
 import re
 from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.schemas.role import RoleRead
 
 
 class UserBase(BaseModel):
@@ -41,6 +42,10 @@ class UserCreate(UserBase):
     """Schema for user creation with password requirements."""
     password: str = Field(..., min_length=8, max_length=128, description="Strong password")
     confirm_password: str = Field(..., description="Password confirmation")
+    role_names: list[str] | None = Field(
+        None,
+        description="Optional list of role names to assign"
+    )
 
     @field_validator('password')
     @classmethod
@@ -75,7 +80,8 @@ class UserCreate(UserBase):
                 "password": "SecurePass123!",
                 "confirm_password": "SecurePass123!",
                 "is_active": True,
-                "is_superuser": False
+                "is_superuser": False,
+                "role_names": ["member"]
             }
         }
     )
@@ -88,6 +94,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
     is_superuser: bool | None = None
+    role_names: list[str] | None = Field(None, description="Optional list of role names to assign")
 
     @field_validator('username')
     @classmethod
@@ -150,6 +157,7 @@ class UserResponse(UserBase):
     id: int = Field(..., description="Unique user ID")
     created_at: datetime = Field(..., description="User creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
+    roles: list[RoleRead] = Field(default_factory=list, description="Roles assigned to the user")
 
     model_config = ConfigDict(
         from_attributes=True,
