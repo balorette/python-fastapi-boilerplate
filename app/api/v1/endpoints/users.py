@@ -64,7 +64,7 @@ async def create_user(
 async def get_user(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
-    _: User = Depends(require_permissions(SystemPermission.USERS_MANAGE)),
+    _: User = Depends(require_permissions(SystemPermission.USERS_READ)),
 ) -> Any:
     """Get user by ID."""
     try:
