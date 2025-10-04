@@ -32,9 +32,6 @@ jobs:
 
       - name: Sync dependencies
         run: |
-          uv python install 3.12
-          uv venv --python "$(uv python find 3.12)"
-          source .venv/bin/activate
           uv sync --dev
 
       - name: Check formatting
