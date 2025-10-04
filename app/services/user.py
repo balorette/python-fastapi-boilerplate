@@ -87,7 +87,7 @@ class UserService:
 
     async def get_user(self, user_id: int, load_relationships: bool = False) -> User:
         """Get a user by ID."""
-        relationships = load_relationships if load_relationships else True
+        relationships = load_relationships
         user = await self.repository.get(user_id, load_relationships=relationships)
         if not user:
             raise NotFoundError(f"User with ID {user_id} not found")
