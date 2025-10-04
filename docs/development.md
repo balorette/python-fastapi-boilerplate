@@ -34,14 +34,14 @@ Standard Python tooling included with Python installations.
 **Option 1: Quick setup with uv (recommended)**
 ```bash
 git clone <repository-url>
-cd iac-api
+cd python-fastapi-boilerplate
 ./scripts/setup-dev-uv.sh
 ```
 
 **Option 2: Traditional setup**
 ```bash
 git clone <repository-url>
-cd iac-api
+cd python-fastapi-boilerplate
 ./scripts/setup-dev.sh
 ```
 
@@ -148,10 +148,8 @@ uv run pytest
 # Format and lint code
 ./scripts/lint.sh                   # Uses uv if available
 # or directly:
-uv run black .
-uv run isort .
-uv run flake8 .
-uv run mypy app/
+uv run ruff format .
+uv run ruff check --fix .
 
 # Install new dependencies
 uv pip install new-package

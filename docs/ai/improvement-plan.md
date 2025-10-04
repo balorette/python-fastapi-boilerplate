@@ -1,7 +1,7 @@
 # FastAPI Enterprise Baseline - Improvement Plan
 
-**Document Version**: 1.2.0
-**Last Updated**: 2025-10-03
+**Document Version**: 1.3.0
+**Last Updated**: 2025-10-04
 **Status**: Active Development
 
 ## Executive Summary
@@ -19,7 +19,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 **Current Gaps** ⚠️
 - `pytest` now runs clean locally (**202 passed**) after pinning bcrypt to the supported range, but CI automation is still missing.
 - Coverage sits at **74%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
-- Role- and permission-based access controls remain unimplemented, blocking downstream teams that need multi-tenant or admin-only endpoints.
+- RBAC regression coverage should broaden to high-sensitivity admin endpoints now that dependency guard behaviour is locked in.
 
 ## Implementation Roadmap
 
@@ -28,7 +28,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 
 #### Remaining Tasks
 - [ ] Backfill integration tests around `/api/v1/auth/login`, `/api/v1/auth/token`, and OAuth provider error paths to lift coverage in `auth.py`, `database.py`, and `app/services/oauth/`.
-- [ ] Ship role/permission scaffolding (schemas, token claims, reusable dependency) with regression coverage.
+- [ ] Expand RBAC test coverage for admin-only endpoints and document the smoke scenarios alongside seeded defaults.
 - [ ] Stand up CI with lint + test automation so regressions surface automatically.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
 - [x] Document structured logging rollout and health-check payloads in README/deployment guides.
@@ -38,6 +38,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - [x] Unified repository/service abstractions and restored the majority of integration suites.
 - [x] Migrated to Ruff-only linting with uv-based workflows.
 - [x] Elevated the Python target to 3.12 across Docker, scripts, and developer docs.
+- [x] Delivered role- and permission-based access controls with seeded defaults and token claims integration.
 
 ### Phase 2: Enterprise Features
 **Status**: Planned — starts once Phase 1 is closed out.
@@ -103,12 +104,12 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 
 ### Immediate Actions (Next 1-2 Days)
 1. Raise auth/DB coverage by exercising refresh, error, and provider edge cases.
-2. Draft RBAC schema + service sketch (roles, permission checks) and outline required migrations.
+2. Outline RBAC regression scenarios for admin endpoints and backfill docs detailing default role/permission seeding.
 3. Capture bcrypt pin + dependency corrections in onboarding/setup docs (completed here).
 
 ### Near-Term (This Sprint)
 1. Push coverage above 80% by focusing on the uncovered modules.
-2. Add GitHub Actions (or equivalent) workflow that runs `ruff check` and `pytest` against a uv environment.
+2. Add GitHub Actions (or equivalent) workflow that runs `ruff check` and `pytest` against a uv environment, with uv caching for faster iterations.
 3. Publish refreshed setup docs explaining dependency pins (bcrypt, itsdangerous, typer) and the expected test baseline.
 
 ### Longer-Term (Post Phase 1)
@@ -126,5 +127,5 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ---
 
 **Document Status**: Living Document — updated as the project progresses.
-**Last Review**: 2025-10-03
+**Last Review**: 2025-10-04
 **Next Review**: Weekly during active development
