@@ -4,6 +4,29 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-04 - Developer Experience Smoke Checks & CI Guide
+
+**Context**: Fresh clones required multiple manual steps before tests would pass, and the repository lacked concrete guidance for replicating our uv workflow in CI. We needed to harden the setup scripts, add codified smoke checks, and document how automation should bootstrap the environment.
+
+**Actions**:
+- Rebuilt `scripts/setup-dev-uv.sh` and `scripts/setup-dev.sh` to enforce Python 3.12, install dependencies via uv/pip, seed SQLite, and execute `pytest -m smoke` automatically.
+- Introduced a smoke marker in `pytest` config with CLI and health endpoint coverage so onboarding scripts can fail fast.
+- Enhanced `scripts/run-tests.sh` with `--smoke`/`--full` modes to mirror local vs CI workflows.
+- Added a dedicated CI setup guide (`docs/ci/setup.md`) covering uv installation, dependency sync, and example GitHub Actions / GitLab CI jobs.
+- Updated the README quickstart paths to highlight the new smoke checks and link to the CI documentation.
+
+**Decision**: Treat smoke tests as part of environment bootstrap—scripts should fail fast if core functionality regresses, and documentation must show contributors how to reproduce automation locally.
+
+**Impact**:
+- A fresh clone running either setup script now results in a ready-to-develop environment with validated health + CLI flows.
+- Contributors gain a canonical reference for wiring uv into GitHub Actions or GitLab CI without reverse-engineering local scripts.
+- `pytest -m smoke` is standardized across scripts, README instructions, and CI guidance, reducing drift between local development and automation.
+
+**Next Steps**:
+- Extend smoke coverage to include OAuth readiness once fixtures are stabilised.
+- Add lint (`ruff check`) to the setup scripts after the next round of code cleanup.
+- Publish a reusable CI template (composite action) once the automation solidifies.
+
 ## 2025-10-03 - Dependency Baseline & Documentation Audit
 
 **Context**: The previous documentation snapshot referenced future-dated work and an outdated test baseline. Running the suite locally surfaced missing runtime dependencies (`itsdangerous`, `typer`) and an incompatibility between `passlib` and `bcrypt>=4`. We needed to correct the dependency set, refresh the README/onboarding instructions, and realign the roadmap before starting RBAC work.

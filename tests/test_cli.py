@@ -11,6 +11,9 @@ from typer.testing import CliRunner
 from app import cli
 
 
+pytestmark = pytest.mark.smoke
+
+
 @pytest.fixture
 def runner() -> CliRunner:
     return CliRunner()
