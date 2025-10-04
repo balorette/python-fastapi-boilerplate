@@ -681,6 +681,7 @@ class TestUserService:
         assert result.hashed_password == "hashed_password"
         assert mock_session.execute.call_count == 2  # 2 existence checks only
         mock_session.add.assert_called_once()
+        # first commit persists user, second assigns roles
         assert mock_session.commit.call_count == 2
 
     @pytest.mark.asyncio
