@@ -128,6 +128,18 @@ pip freeze > requirements.txt
 - **venv**: Creates `venv/` directory (traditional)
 - Both are supported by the project scripts
 
+### RBAC Defaults & Local Seeding
+
+- Running `./scripts/setup-db.sh sqlite` or `python init_db.py` seeds default
+  roles and permissions by invoking `ensure_default_roles`.
+- Two roles ship with the boilerplate:
+  - `admin` → granted `users:read` and `users:manage` permissions.
+  - `member` → granted `users:read` permission only.
+- Test fixtures mirror this split so that `auth_headers` exercises admin-only
+  paths and `member_auth_headers` asserts read-only behaviour.
+- When adding new permissions, update `app/core/authz.py` so the seeding helper
+  reflects them and re-run the init script to sync local databases.
+
 ## Development Workflow
 
 ### Daily Development Commands
