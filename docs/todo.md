@@ -37,6 +37,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [ ] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
 - [ ] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
+  - [x] Migrate structured logging to use `pythonjsonlogger.jsonlogger.JsonFormatter` to remove import deprecation warnings.
 
 ## 5. Documentation & Developer Experience (In Progress)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.

@@ -4,6 +4,25 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-10 - Logging Warning Remediation Kickoff
+
+**Context**: Phase 1 called out runtime warnings from `python-json-logger` imports. We began remediation so the logging stack no longer emits deprecation notices during tests and CI runs.
+
+**Actions**:
+- Updated `app/core/logging.py` to import `JsonFormatter` from `pythonjsonlogger.jsonlogger`, the modern path recommended by upstream.
+- Swapped the formatter base class to the new import to keep the structured logging pipeline intact without runtime shims.
+- Logged progress in the living backlog so the team can track that the warning remediation effort has started.
+
+**Impact**:
+- Eliminates the import deprecation warning triggered during startup/tests, keeping log output clean for operators.
+- Confirms the structured logging formatter remains compatible with future `python-json-logger` releases.
+- Provides a recorded audit trail for the broader warning remediation initiative in Phase 1.
+
+**Next Steps**:
+- Replace the deprecated `crypt` usage in the auth stack with `passlib` helpers.
+- Update Starlette 422 constant references once the framework upgrade path is confirmed.
+- Investigate the SQLAlchemy flush warning to determine whether repository patterns need adjustment.
+
 ## 2025-10-09 - Test Baseline Audit & Documentation Realignment
 
 **Context**: Ran the full suite to validate our baseline before planning the next phase of work. The run surfaced eight additional tests (210 total), a modest coverage uptick, and a handful of new deprecation/SQLAlchemy warnings that were not reflected in the living docs.

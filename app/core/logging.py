@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import structlog
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from app.core.config import settings
 
@@ -25,7 +25,7 @@ def _iso_utc_timestamp() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-class StructuredLogFormatter(jsonlogger.JsonFormatter):
+class StructuredLogFormatter(JsonFormatter):
     """JSON formatter that injects compliance metadata into each record."""
 
     def add_fields(
