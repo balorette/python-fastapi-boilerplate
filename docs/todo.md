@@ -1,12 +1,12 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.3.0
-**Last Updated**: 2025-10-04
+**Document Version**: 2.4.0
+**Last Updated**: 2025-10-09
 
-> **Status Snapshot (2025-10-04)**
-> - `pytest` → **202 passed / 0 failed / 202 total**.
-> - Coverage: **74%** — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities.
-> - Runtime warnings addressed; remaining TODOs focus on coverage, CI automation, and developer documentation refreshes.
+> **Status Snapshot (2025-10-09)**
+> - `pytest` → **210 passed / 0 failed / 210 total** (coverage report generated via `uv run pytest`).
+> - Coverage: **75%** — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities (`app/cli.py`).
+> - Deprecation warnings surfaced (`pythonjsonlogger`, `crypt`, Starlette 422 constant) alongside an SAWarning during repository flushes — track remediation alongside coverage and CI work.
 
 The following backlog keeps the boilerplate modular, production-ready, and easy for new teams to adopt. Each section calls out the concrete steps required for completion.
 
@@ -36,6 +36,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [ ] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow (CI workflow in progress).
 - [ ] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
+- [ ] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
 
 ## 5. Documentation & Developer Experience (In Progress)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.

@@ -1,8 +1,27 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.2.0
+**Document Version**: 1.3.0
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-09 - Test Baseline Audit & Documentation Realignment
+
+**Context**: Ran the full suite to validate our baseline before planning the next phase of work. The run surfaced eight additional tests (210 total), a modest coverage uptick, and a handful of new deprecation/SQLAlchemy warnings that were not reflected in the living docs.
+
+**Actions**:
+- Executed `uv run pytest` to confirm a green build, capture updated coverage (75%), and enumerate new warnings for triage.
+- Updated `docs/todo.md` status snapshot and tooling backlog with the latest test counts, coverage percentage, and warning remediation task.
+- Refreshed `docs/ai/improvement-plan.md` to reflect the new metrics, incorporate warning remediation into Phase 1, and clarify immediate next steps.
+
+**Impact**:
+- Documentation now mirrors the repository's actual state, preventing drift before we stand up CI automation.
+- Warning remediation is tracked explicitly so the team can prioritise fixes alongside the coverage push.
+- The living plan highlights that CI remains outstanding despite local success, keeping stakeholders aligned on risk.
+
+**Next Steps**:
+- Prioritise coverage improvements across `auth.py`, `database.py`, and CLI paths to close the remaining gap to 80%.
+- Tackle the new warning set (pythonjsonlogger import path, deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush usage).
+- Draft CI automation work to lock the green baseline into GitHub Actions.
 
 ## 2025-10-04 - Developer Experience Smoke Checks & CI Guide
 
