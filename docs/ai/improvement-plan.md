@@ -1,7 +1,7 @@
 # FastAPI Enterprise Baseline - Improvement Plan
 
-**Document Version**: 1.3.0
-**Last Updated**: 2025-10-04
+**Document Version**: 1.4.0
+**Last Updated**: 2025-10-09
 **Status**: Active Development
 
 ## Executive Summary
@@ -17,8 +17,9 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - Modern Python 3.12 target, Ruff-first tooling, and uv-backed workflows already standardised.
 
 **Current Gaps** ⚠️
-- `pytest` now runs clean locally (**202 passed**) after pinning bcrypt to the supported range, but CI automation is still missing.
-- Coverage sits at **74%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
+- `pytest` now runs clean locally (**210 passed**) but CI automation is still missing and should guard against regressions.
+- Coverage sits at **75%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
+- Runtime warnings surfaced during the latest run (`pythonjsonlogger` import path, deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush warning) and require remediation alongside the coverage push.
 - RBAC regression coverage should broaden to high-sensitivity admin endpoints now that dependency guard behaviour is locked in.
 
 ## Implementation Roadmap
@@ -30,6 +31,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - [ ] Backfill integration tests around `/api/v1/auth/login`, `/api/v1/auth/token`, and OAuth provider error paths to lift coverage in `auth.py`, `database.py`, and `app/services/oauth/`.
 - [ ] Expand RBAC test coverage for admin-only endpoints and document the smoke scenarios alongside seeded defaults.
 - [ ] Stand up CI with lint + test automation so regressions surface automatically.
+- [ ] Address new warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt`, updating Starlette 422 usage, and adjusting SQLAlchemy flush patterns when needed.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
 - [x] Document structured logging rollout and health-check payloads in README/deployment guides.
 
@@ -105,7 +107,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ### Immediate Actions (Next 1-2 Days)
 1. Raise auth/DB coverage by exercising refresh, error, and provider edge cases.
 2. Outline RBAC regression scenarios for admin endpoints and backfill docs detailing default role/permission seeding.
-3. Capture bcrypt pin + dependency corrections in onboarding/setup docs (completed here).
+3. Remediate the new warning set (pythonjsonlogger import, deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush behaviour) or document workarounds until fixes land.
 
 ### Near-Term (This Sprint)
 1. Push coverage above 80% by focusing on the uncovered modules.
