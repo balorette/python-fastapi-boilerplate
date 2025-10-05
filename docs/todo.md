@@ -28,8 +28,8 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [x] Consolidate OAuth/JWT validation paths to reuse the provider factory and emit structured errors; align “real” and mock test suites.
 - [x] Introduce role/permission scaffolding (schema model, token claims, reusable role guard) and cover key admin routes with RBAC tests.
 - [x] Add RBAC dependency guard unit tests to prevent regressions in `require_roles`/`require_permissions`.
-- [ ] Expand RBAC regression coverage for high-traffic admin endpoints and document smoke scenarios.
-- [ ] Document RBAC defaults and seeding expectations in contributor and operations guides.
+- [x] Expand RBAC regression coverage for high-traffic admin endpoints and document smoke scenarios.
+- [x] Document RBAC defaults and seeding expectations in contributor and operations guides.
 
 ## 4. Testing & Tooling Refinement (In Progress)
 - [x] Restore `uv run pytest` to green by addressing remaining OAuth/auth integration failures and flaky fixtures.

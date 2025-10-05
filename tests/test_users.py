@@ -1,11 +1,32 @@
 """Test user management endpoints with RBAC-aware expectations."""
 
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 
 def _assert_has_member_role(user_payload: dict) -> None:
     assert "roles" in user_payload
     assert any(role["name"] == "member" for role in user_payload["roles"])
+
+
+def _create_user(client: TestClient, auth_headers: dict) -> dict:
+    """Create a unique user using admin credentials for downstream tests."""
+
+    suffix = uuid4().hex[:8]
+    user_payload = {
+        "email": f"rbac-{suffix}@example.com",
+        "username": f"rbac-user-{suffix}",
+        "password": "TestPass123!",
+        "confirm_password": "TestPass123!",
+        "full_name": "RBAC Scenario User",
+        "is_active": True,
+        "is_superuser": False,
+    }
+
+    response = client.post("/api/v1/users/", json=user_payload, headers=auth_headers)
+    assert response.status_code == 201
+    return response.json()
 
 
 def test_get_users(client: TestClient, auth_headers: dict) -> None:
@@ -214,4 +235,30 @@ def test_member_cannot_create_users(
     response = client.post(
         "/api/v1/users/", json=user_payload, headers=member_auth_headers
     )
+    assert response.status_code == 403
+
+
+def test_member_cannot_update_users(
+    client: TestClient, auth_headers: dict, member_auth_headers: dict
+) -> None:
+    created_user = _create_user(client, auth_headers)
+
+    response = client.put(
+        f"/api/v1/users/{created_user['id']}",
+        json={"full_name": "Updated Name"},
+        headers=member_auth_headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_member_cannot_delete_users(
+    client: TestClient, auth_headers: dict, member_auth_headers: dict
+) -> None:
+    created_user = _create_user(client, auth_headers)
+
+    response = client.delete(
+        f"/api/v1/users/{created_user['id']}", headers=member_auth_headers
+    )
+
     assert response.status_code == 403

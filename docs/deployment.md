@@ -33,6 +33,18 @@
    GOOGLE_REDIRECT_URI=https://yourdomain.com/api/v1/auth/callback/google
    ```
 
+### RBAC Defaults & Seeding Expectations
+
+- Run database migrations (`alembic upgrade head`) or execute `python init_db.py`
+  as part of deploys to invoke `ensure_default_roles`.
+- Default roles seeded:
+  - `admin` → `users:read`, `users:manage` permissions.
+  - `member` → `users:read` permission.
+- Provision at least one admin user after seeding so operations teams can
+  authenticate and assign roles to additional staff.
+- If permissions change between releases, rerun the init script to backfill
+  assignments before promoting traffic.
+
 ## Observability & Health Endpoints
 
 The boilerplate exposes a comprehensive set of probes and headers that operators can rely on during rollouts:
