@@ -84,7 +84,7 @@ async def get_current_active_user(
     return current_user
 
 
-def require_roles(*roles: SystemRole | str) -> Callable[[User], User]:
+def require_roles(*roles: SystemRole | str) -> Callable:
     """Dependency factory enforcing that the current user has one of the roles."""
 
     if not roles:
@@ -108,7 +108,7 @@ def require_roles(*roles: SystemRole | str) -> Callable[[User], User]:
     return _role_guard
 
 
-def require_permissions(*permissions: SystemPermission | str) -> Callable[[User], User]:
+def require_permissions(*permissions: SystemPermission | str) -> Callable:
     """Dependency factory enforcing that the current user has all permissions."""
 
     if not permissions:

@@ -44,7 +44,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         id: Any,
         *,
-        load_relationships: bool = False,
+        load_relationships: Any = None,
         session: Optional[AsyncSession] = None,
     ) -> Optional[ModelType]:
         """Get a single record by ID with optional relationship loading."""
