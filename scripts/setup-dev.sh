@@ -46,6 +46,9 @@ fi
 echo "🗄️ Setting up database (SQLite default)..."
 ./scripts/setup-db.sh sqlite
 
+echo "🩺 Running health/log verification..."
+./scripts/verify-dev-environment.sh
+
 if command -v pytest >/dev/null 2>&1; then
     echo "🧪 Running smoke checks (pytest -m smoke)..."
     pytest -m smoke --maxfail=1

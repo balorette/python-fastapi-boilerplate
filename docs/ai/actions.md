@@ -1,8 +1,30 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.3.0
+**Document Version**: 1.4.0
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-10 - Service Blueprint Finalisation & Setup Verification
+
+**Context**: Phase 1 Section 4 required a completed service specification before implementation, and onboarding still lacked an automated check that logs and health probes work on a fresh clone. We also committed to sharing uv-based CI steps with contributors.
+
+**Actions**:
+- Finalised the service layer blueprint in `docs/ai/spec.md` with detailed AuthService, RoleService, PermissionService, and HealthService contracts plus telemetry standards.
+- Added `scripts/verify-dev-environment.sh` and wired it into both setup scripts to assert structured logs and `/health` probes succeed before running smoke tests.
+- Refreshed the README quickstart instructions and CI setup guide to highlight the new verification step and guide contributors through uv-based automation.
+- Updated `docs/todo.md` to mark the developer experience items complete and reflect the current snapshot date.
+- Captured the milestone in this action log and `docs/ai/lessons.md` to keep the knowledge base current.
+
+**Impact**:
+- Service teams now have precise method contracts and observability requirements, unblocking implementation with consistent expectations.
+- New contributors get immediate feedback that logging and health probes work, preventing silent misconfiguration before development.
+- CI documentation mirrors the scripted workflow, making it trivial to reproduce automation locally or in GitHub/GitLab pipelines.
+- The living backlog and lessons remain trustworthy, reinforcing the documentation-first operating model.
+
+**Next Steps**:
+- Implement the specified AuthService interfaces with the outlined audit and telemetry hooks.
+- Extend verification to cover OAuth provider readiness once the service layer lands.
+- Add Ruff lint checks to bootstrap scripts after confirming the remaining warning remediation tasks.
 
 ## 2025-10-10 - Logging Warning Remediation Kickoff
 

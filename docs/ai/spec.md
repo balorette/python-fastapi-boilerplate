@@ -1,7 +1,7 @@
 # Technical Specification - FastAPI Enterprise Baseline
 
-**Document Version**: 1.0.0  
-**Last Updated**: 2025-01-25  
+**Document Version**: 1.1.0
+**Last Updated**: 2025-10-10
 **Status**: Living Document
 
 ## 1. System Overview
@@ -176,13 +176,118 @@ class User:
 - Password minimum 8 characters
 - Password must contain letter and number
 
-### 4.2 AuthService (To Be Implemented)
+### 4.2 AuthService
 
-#### Core Methods
-- `create_tokens(user: User) -> TokenResponse`
+#### Responsibilities
+- Centralise credential validation, OAuth callbacks, and token lifecycle management.
+- Persist refresh tokens (local + provider) and coordinate rotation/blacklisting.
+- Emit structured audit logs for authentication decisions.
+
+#### Dependencies
+- `UserRepository` for identity lookups/updates.
+- `TokenEncoder` utility providing JWT encode/decode helpers and key rotation awareness.
+- `OAuthProviderRegistry` for provider-specific exchange/revoke flows (Google, future providers).
+- `AuditLogger` wrapper exposing `log_auth_success` / `log_auth_failure` events.
+
+#### Method Contracts
+- `create_tokens(user: User, context: AuthContext) -> TokenResponse`
+  - Generates access + refresh tokens with deterministic `sub`, `iss`, `aud`, and `provider` claims.
+  - Binds `roles`/`permissions` arrays in custom claims for downstream guards.
+  - Persists hashed refresh token fingerprint + expiry for revocation checks.
+  - Emits `audit` log with correlation + user metadata; increments Prometheus counter `auth_success_total`.
+- `authenticate_credentials(identifier: str, password: str) -> User`
+  - Accepts either username or email; normalises case before lookup.
+  - Uses `passlib` context for timing-safe comparison, increments failure metrics on mismatch.
+  - Raises `InvalidCredentialsError` (HTTP 401) after 3 failed attempts recorded in rolling window.
+- `begin_oauth(provider: str, redirect_uri: str) -> OAuthRedirect`
+  - Validates provider is registered, generates PKCE verifier/challenge, stores state in session cache.
+- `exchange_oauth_code(provider: str, code: str, state: str) -> TokenResponse`
+  - Validates state, fetches profile, links/creates local user, then delegates to `create_tokens`.
+  - Stores provider refresh token encrypted via Fernet using `settings.SECRET_KEY` derived key.
 - `refresh_tokens(refresh_token: str) -> TokenResponse`
-- `revoke_tokens(user_id: int) -> bool`
+  - Validates signature + fingerprint, rejects if revoked/expired, rotates refresh token atomically.
+  - Issues new JWT pair and updates persisted fingerprint; logs `refresh` audit event.
+- `revoke_tokens(user_id: int, *, provider: str | None = None) -> None`
+  - Adds refresh token fingerprint to blacklist table with expiry.
+  - Calls provider revoke API when `provider` provided and stored token exists.
 - `validate_token(token: str) -> TokenData`
+  - Verifies signature, expiry, issuer, and audience.
+  - Checks jti/refresh fingerprint against revocation store.
+  - Returns strongly typed payload including roles/permissions for guard dependencies.
+
+#### Error Handling & Observability
+- Emits structured audit log for every login success/failure with `correlation_id` and `source_ip` fields.
+- Metrics:
+  - `auth_success_total{provider="local|google"}`
+  - `auth_failure_total{reason="invalid_credentials|revoked|expired"}`
+  - `auth_refresh_total`
+- Raises typed exceptions mapped to HTTP responses:
+  - `InvalidCredentialsError` → 401
+  - `InactiveUserError` → 403 (includes remediation hint in response detail)
+  - `ProviderExchangeError` → 502 with provider error metadata.
+- All error branches trigger `log_auth_failure` with reason codes for SOC ingestion.
+
+### 4.3 RoleService
+
+#### Responsibilities
+- Manage RBAC role lifecycle (create/update/delete) and enforce uniqueness constraints.
+- Coordinate assignment of roles to users and cascade permission updates.
+
+#### Method Contracts
+- `create_role(data: RoleCreate) -> Role`
+  - Validates slug uniqueness, stores human-readable description, triggers audit log entry.
+- `update_role(role_id: int, data: RoleUpdate) -> Role`
+  - Prevents renaming of system roles (`admin`, `user`) unless `force=True` and caller is superuser.
+- `delete_role(role_id: int) -> None`
+  - Soft deletes by default (marks `deleted_at`), hard delete only when `force=True` and no assignments.
+- `assign_role(user_id: int, role_id: int) -> None`
+  - Validates user/role existence and active status, ensures idempotency, propagates permission cache bust.
+- `remove_role(user_id: int, role_id: int) -> None`
+  - Blocks removal of last admin role, raises `LastAdminRemovalError` with remediation instructions.
+- `list_roles(include_permissions: bool = False) -> list[Role]`
+  - Supports eager loading of permissions, returns deterministic ordering (name asc).
+
+### 4.4 PermissionService
+
+#### Responsibilities
+- Define fine-grained permission slugs and manage role associations.
+- Provide lookup helpers consumed by guard dependencies.
+
+#### Method Contracts
+- `create_permission(data: PermissionCreate) -> Permission`
+  - Enforces slug pattern `^[a-z0-9_.:-]+$`, rejects duplicates.
+- `attach_permission(role_id: int, permission_id: int) -> None`
+  - Validates relationship does not exist, updates role cache, logs `permission_attached` event.
+- `detach_permission(role_id: int, permission_id: int) -> None`
+  - Prevents detaching permissions flagged as mandatory for role (e.g., `admin:*`).
+- `list_permissions() -> list[Permission]`
+  - Returns canonical ordering, supports filtering by prefix for UI search.
+- `get_effective_permissions(user_id: int) -> set[str]`
+  - Aggregates direct role permissions + dynamic overrides, used in JWT claim enrichment.
+
+### 4.5 HealthService
+
+#### Responsibilities
+- Aggregate dependency checks (database, Redis, logging) for `/api/v1/health/*` endpoints.
+- Provide readiness vs liveness separation with consistent payload schemas.
+
+#### Method Contracts
+- `get_liveness() -> HealthStatus`
+  - Returns static healthy status plus build metadata; no external calls.
+- `get_readiness() -> HealthStatus`
+  - Executes async DB query (`SELECT 1`), verifies log directory writable, ensures background tasks responsive.
+  - Flags `status="degraded"` when non-critical dependencies fail (e.g., Redis down) but API still functional.
+- `get_detailed() -> HealthDetails`
+  - Extends readiness payload with timings, last migration version, queue depths, and recent auth error counts.
+
+### 4.6 Service Telemetry Baseline
+
+- All services instrument structured logs with `service`, `operation`, and `correlation_id` fields.
+- Emit Prometheus counters/histograms via shared `ServiceMetrics` helper:
+  - `service_operation_duration_seconds{service="user",operation="create"}` (histogram)
+  - `service_operation_failures_total{service,operation}` (counter)
+- Propagate tracing context (W3C traceparent) via middleware; services attach span attributes for DB/cache calls.
+- Guard-critical paths (auth, role mutation) trigger audit log events with `compliance_event=True` for regulator traceability.
 
 ## 5. Database Specifications
 
@@ -216,6 +321,84 @@ pool_recycle = 3600
 - Relationship loading (eager/lazy)
 - Existence checks
 - Count operations
+
+### 5.3 Schema Definitions
+
+All tables inherit the shared `Base` mixin which provides `id`, `created_at`, and
+`updated_at` columns plus naming conventions for deterministic constraint
+identifiers.
+
+#### `users`
+
+| Column                 | Type           | Constraints / Indexes         | Notes                             |
+|------------------------|----------------|--------------------------------|-----------------------------------|
+| `id`                   | `INTEGER`      | Primary key, indexed           | Auto-incrementing surrogate key   |
+| `email`                | `VARCHAR(255)` | Unique, indexed                | Primary login + OAuth identifier  |
+| `username`             | `VARCHAR(255)` | Unique, indexed                | Human-friendly handle             |
+| `hashed_password`      | `VARCHAR(255)` | Nullable                       | Empty for OAuth-only accounts     |
+| `full_name`            | `VARCHAR(255)` | Nullable                       | Display name                      |
+| `is_active`            | `BOOLEAN`      | Default `TRUE`                 | Soft-disable flag                 |
+| `is_superuser`         | `BOOLEAN`      | Default `FALSE`                | Grants elevated permissions       |
+| `oauth_provider`       | `VARCHAR(50)`  | Nullable, indexed              | `google`, `local`, etc.           |
+| `oauth_id`             | `VARCHAR(255)` | Nullable, indexed              | Provider user identifier          |
+| `oauth_email_verified` | `BOOLEAN`      | Nullable                       | Mirrors provider verification flag |
+| `oauth_refresh_token`  | `TEXT`         | Nullable                       | Encrypted provider refresh token  |
+
+#### `roles`
+
+| Column         | Type           | Constraints / Indexes               | Notes                                |
+|----------------|----------------|--------------------------------------|--------------------------------------|
+| `id`           | `INTEGER`      | Primary key, indexed                 |                                      |
+| `name`         | `VARCHAR(64)`  | Unique, indexed                      | Machine-readable RBAC role key       |
+| `description`  | `VARCHAR(255)` | Nullable                             | Human readable description           |
+
+#### `permissions`
+
+| Column        | Type            | Constraints / Indexes               | Notes                                |
+|---------------|-----------------|--------------------------------------|--------------------------------------|
+| `id`          | `INTEGER`       | Primary key, indexed                 |                                      |
+| `name`        | `VARCHAR(128)`  | Unique, indexed                      | Canonical permission slug            |
+| `description` | `VARCHAR(255)`  | Nullable                             | Optional documentation string        |
+
+#### Association Tables
+
+- `user_roles`
+  - Columns: `user_id` (FK -> `users.id`, `ON DELETE CASCADE`),
+    `role_id` (FK -> `roles.id`, `ON DELETE CASCADE`).
+  - Composite primary key on (`user_id`, `role_id`) with
+    `uq_user_role` unique constraint to prevent duplicates.
+- `role_permissions`
+  - Columns: `role_id` (FK -> `roles.id`, `ON DELETE CASCADE`),
+    `permission_id` (FK -> `permissions.id`, `ON DELETE CASCADE`).
+  - Composite primary key on (`role_id`, `permission_id`) and unique constraint
+    `uq_role_permission` enforcing idempotent assignments.
+
+### 5.4 Indexing & Performance Considerations
+
+- Composite indexes evaluated per query plan (e.g. `users (oauth_provider,
+  oauth_id)` for provider lookups) and created as needed via migrations.
+- Foreign keys use `ON DELETE CASCADE` to keep join tables clean when parent
+  rows are removed.
+- Naming convention in metadata ensures predictable index/constraint names,
+  simplifying Alembic diffs and database observability.
+- All timestamp fields are stored in UTC; queries requiring ordering should use
+  `created_at` indexes for pagination windows.
+
+### 5.5 Migration & Data Management Strategy
+
+- **Versioning**: Alembic revision IDs follow the `YYYYMMDDHHMM_<summary>`
+  format to encode chronological ordering.
+- **Bootstrap**: Initial migration seeds baseline roles (`admin`, `user`) and
+  assigns default permissions required for the API surface.
+- **Repeatability**: Seeding scripts live under `app/db/seeders/` (to be
+  implemented) and are idempotent, using `ON CONFLICT DO NOTHING` semantics for
+  PostgreSQL and equivalent logic for SQLite.
+- **Rollback**: Every migration defines both `upgrade()` and `downgrade()` paths
+  with lossless reversibility when feasible; destructive steps require explicit
+  documentation and ops approval.
+- **Data retention**: OAuth refresh tokens are encrypted before persistence and
+  rotated whenever providers return new values; scheduled cleanup tasks purge
+  inactive users (disabled for >365 days) in future phases.
 
 ## 6. Security Specifications
 

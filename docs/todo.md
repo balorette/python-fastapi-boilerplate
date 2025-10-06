@@ -1,9 +1,9 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.4.0
-**Last Updated**: 2025-10-09
+**Document Version**: 2.5.0
+**Last Updated**: 2025-10-10
 
-> **Status Snapshot (2025-10-09)**
+> **Status Snapshot (2025-10-10)**
 > - `pytest` → **210 passed / 0 failed / 210 total** (coverage report generated via `uv run pytest`).
 > - Coverage: **75%** — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities (`app/cli.py`).
 > - Deprecation warnings surfaced (`pythonjsonlogger`, `crypt`, Starlette 422 constant) alongside an SAWarning during repository flushes — track remediation alongside coverage and CI work.
@@ -41,9 +41,9 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 
 ## 5. Documentation & Developer Experience (In Progress)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.
-- [ ] Refresh quickstart / setup scripts so a fresh clone yields working logs, health probes, and passing smoke tests.
-- [ ] Capture learnings and next actions in `docs/ai/actions.md` / `docs/ai/lessons.md` after each milestone to keep the knowledge base current.
-- [ ] Publish CI setup guide outlining uv environment bootstrap + pytest execution for contributors.
+- [x] Refresh quickstart / setup scripts so a fresh clone yields working logs, health probes, and passing smoke tests.
+- [x] Capture learnings and next actions in `docs/ai/actions.md` / `docs/ai/lessons.md` after each milestone to keep the knowledge base current.
+- [x] Publish CI setup guide outlining uv environment bootstrap + pytest execution for contributors.
 
 ## Future and to come
 ### 6. Add Strawberry GraphQL API ⚠️ PENDING
