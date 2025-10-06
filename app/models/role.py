@@ -49,7 +49,7 @@ class Permission(Base):
 
     roles: Mapped[list["Role"]] = relationship(
         "Role",
-        secondary=role_permissions,
+        secondary="role_permissions",
         back_populates="permissions",
         lazy="selectin",
     )
@@ -65,14 +65,14 @@ class Role(Base):
 
     permissions: Mapped[list[Permission]] = relationship(
         Permission,
-        secondary=role_permissions,
+        secondary="role_permissions",
         back_populates="roles",
         lazy="selectin",
     )
 
     users: Mapped[list["User"]] = relationship(
         "User",
-        secondary=user_roles,
+        secondary="user_roles",
         back_populates="roles",
         lazy="selectin",
     )
