@@ -22,7 +22,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [x] Add focused unit tests for new repository features (soft delete, relationship eager-loading, range filters) to protect the shared base abstraction.
 - [x] Backfill CLI coverage to verify repository bootstrap commands (identified coverage gap).
 
-## 3. Authentication & Authorization Hardening (In Progress)
+## 3. Authentication & Authorization Hardening (Completed)
 - [x] Fix OAuth login regression tests by seeding SQLite tables in debug fixtures (unblocks `tests/test_debug_oauth.py` and `tests/test_oauth_jwt_validation.py`).
 - [x] Ensure inactive-user flows return consistent 403/401 responses and adjust expectations in OAuth suites once fixtures are stabilised.
 - [x] Consolidate OAuth/JWT validation paths to reuse the provider factory and emit structured errors; align “real” and mock test suites.
@@ -39,7 +39,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [ ] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
   - [x] Migrate structured logging to use `pythonjsonlogger.jsonlogger.JsonFormatter` to remove import deprecation warnings.
 
-## 5. Documentation & Developer Experience (In Progress)
+## 5. Documentation & Developer Experience (Completed)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.
 - [x] Refresh quickstart / setup scripts so a fresh clone yields working logs, health probes, and passing smoke tests.
 - [x] Capture learnings and next actions in `docs/ai/actions.md` / `docs/ai/lessons.md` after each milestone to keep the knowledge base current.
