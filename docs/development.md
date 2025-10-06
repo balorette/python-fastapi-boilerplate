@@ -210,27 +210,28 @@ pip install new-package
 
 ### Code Style
 
-We use several tools to maintain code quality:
+Ruff handles formatting, linting, and import ordering for this project. Match CI locally with the same commands the workflow runs:
 
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **flake8**: Code linting
-- **mypy**: Type checking
+```bash
+uv run ruff format --check .
+uv run ruff check .
+```
 
-Run all quality checks:
+For auto-fixes while developing you can run the helper script:
+
 ```bash
 ./scripts/lint.sh
 ```
 
 ### Pre-commit Hooks
 
-Pre-commit hooks automatically run quality checks:
+Install the shared hooks after setting up your environment so Ruff runs before every commit:
 
 ```bash
-# Install hooks
+# Install hooks (uv users run via the virtualenv created during setup)
 pre-commit install
 
-# Run on all files
+# Run on all tracked files
 pre-commit run --all-files
 ```
 

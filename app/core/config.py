@@ -2,7 +2,7 @@
 
 import json
 
-from pydantic import AliasChoices, AnyHttpUrl, Field, PostgresDsn, field_validator
+from pydantic import AliasChoices, Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

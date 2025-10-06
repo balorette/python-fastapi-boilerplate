@@ -1,13 +1,14 @@
 """Test authentication endpoints."""
 
-import pytest
 import uuid
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.user import UserService
-from app.schemas.user import UserCreate
 from app.core.security import create_access_token
+from app.schemas.user import UserCreate
+from app.services.user import UserService
 
 
 @pytest.fixture

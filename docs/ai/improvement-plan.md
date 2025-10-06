@@ -32,7 +32,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - [ ] Expand RBAC test coverage for admin-only endpoints and document the smoke scenarios alongside seeded defaults.
 - [ ] Stand up CI with lint + test automation so regressions surface automatically.
 - [ ] Address new warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt`, updating Starlette 422 usage, and adjusting SQLAlchemy flush patterns when needed.
-  - [x] Update structured logging to import `JsonFormatter` from `pythonjsonlogger.jsonlogger` to resolve the deprecation warning.
+  - [x] Update structured logging to import `JsonFormatter` from `pythonjsonlogger.json` to resolve the deprecation warning.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
 - [x] Document structured logging rollout and health-check payloads in README/deployment guides.
 

@@ -10,7 +10,6 @@ from typer.testing import CliRunner
 
 from app import cli
 
-
 pytestmark = pytest.mark.smoke
 
 

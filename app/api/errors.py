@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -20,8 +20,9 @@ from app.services.base import (
     ServiceError,
 )
 
-
 logger = logging.getLogger(__name__)
+
+HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
 
 
 def _request_id_from(request: Request) -> str | None:
@@ -34,7 +35,7 @@ def _json_response(
     status_code: int,
     error: str,
     message: str,
-    details: Dict[str, Any] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> JSONResponse:
     payload = ErrorResponse(
         error=error,
@@ -78,7 +79,7 @@ async def business_rule_handler(
     logger.warning("Business rule violation", extra={"error": str(exc)})
     return _json_response(
         request=request,
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_STATUS,
         error="business_rule_violation",
         message=str(exc),
     )
@@ -113,7 +114,7 @@ async def request_validation_handler(
     logger.warning("Request validation error", extra={"errors": exc.errors()})
     return _json_response(
         request=request,
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_STATUS,
         error="request_validation_error",
         message="Request validation failed",
         details={"errors": exc.errors()},
@@ -133,11 +134,11 @@ async def integrity_error_handler(
     elif "foreign" in lowered:
         error = "integrity_foreign_key_violation"
         response_message = "Referenced record does not exist"
-        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        status_code = HTTP_422_STATUS
     else:
         error = "integrity_error"
         response_message = "Data integrity constraint violated"
-        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        status_code = HTTP_422_STATUS
 
     return _json_response(
         request=request,
@@ -154,7 +155,7 @@ async def data_integrity_error_handler(
     logger.error("Repository data integrity error", extra={"error": str(exc)})
     return _json_response(
         request=request,
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_STATUS,
         error="data_integrity_violation",
         message=str(exc),
     )

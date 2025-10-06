@@ -3,7 +3,7 @@
 from typing import Any
 
 
-class APIException(Exception):
+class APIError(Exception):
     """Base exception class for API-related errors."""
 
     def __init__(
@@ -18,14 +18,14 @@ class APIException(Exception):
         super().__init__(self.message)
 
 
-class ValidationError(APIException):
+class ValidationError(APIError):
     """Exception raised for validation errors."""
 
     def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, status_code=400, details=details)
 
 
-class NotFoundError(APIException):
+class NotFoundError(APIError):
     """Exception raised when a resource is not found."""
 
     def __init__(
@@ -34,7 +34,7 @@ class NotFoundError(APIException):
         super().__init__(message, status_code=404, details=details)
 
 
-class AuthenticationError(APIException):
+class AuthenticationError(APIError):
     """Exception raised for authentication errors."""
 
     def __init__(
@@ -45,7 +45,7 @@ class AuthenticationError(APIException):
         super().__init__(message, status_code=401, details=details)
 
 
-class AuthorizationError(APIException):
+class AuthorizationError(APIError):
     """Exception raised for authorization errors."""
 
     def __init__(
@@ -54,7 +54,7 @@ class AuthorizationError(APIException):
         super().__init__(message, status_code=403, details=details)
 
 
-class ConflictError(APIException):
+class ConflictError(APIError):
     """Exception raised for resource conflicts."""
 
     def __init__(
@@ -63,7 +63,7 @@ class ConflictError(APIException):
         super().__init__(message, status_code=409, details=details)
 
 
-class DatabaseError(APIException):
+class DatabaseError(APIError):
     """Exception raised for database-related errors."""
 
     def __init__(

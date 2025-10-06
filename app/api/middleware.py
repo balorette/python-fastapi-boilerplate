@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 import uuid
 from collections import defaultdict
-from typing import Callable, Iterable
+from collections.abc import Callable, Iterable
 
+import anyio
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import anyio
-
 
 logger = logging.getLogger("app.middleware")
 

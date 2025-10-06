@@ -1,11 +1,10 @@
 """Shared Pydantic helpers used by the boilerplate application."""
 
 from datetime import UTC, datetime
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic.config import ConfigDict
-
 
 T = TypeVar("T")
 
@@ -34,10 +33,10 @@ class PaginationParams(BaseSchema):
         return (self.page - 1) * self.size
 
 
-class PaginatedResponse(BaseSchema, Generic[T]):
+class PaginatedResponse[T](BaseSchema):
     """Generic paginated response wrapper with metadata helpers."""
 
-    items: List[T] = Field(..., description="Items returned for this page")
+    items: list[T] = Field(..., description="Items returned for this page")
     total: int = Field(..., ge=0, description="Total number of matching items")
     page: int = Field(..., ge=1, description="Current page number")
     size: int = Field(..., ge=1, description="Configured page size")
@@ -49,7 +48,7 @@ class PaginatedResponse(BaseSchema, Generic[T]):
     def create(
         cls,
         *,
-        items: List[T],
+        items: list[T],
         total: int,
         pagination: PaginationParams,
     ) -> "PaginatedResponse[T]":
@@ -72,7 +71,7 @@ class ErrorResponse(BaseSchema):
 
     error: str = Field(..., description="Machine readable error code")
     message: str = Field(..., description="Human readable error message")
-    details: Optional[Dict[str, Any]] = Field(
+    details: dict[str, Any] | None = Field(
         None,
         description="Optional context about the error",
     )
@@ -80,7 +79,7 @@ class ErrorResponse(BaseSchema):
         default_factory=lambda: datetime.now(UTC),
         description="Timestamp when the error was generated",
     )
-    request_id: Optional[str] = Field(
+    request_id: str | None = Field(
         None,
         description="Request correlation identifier when available",
     )
@@ -92,7 +91,7 @@ class HealthCheck(BaseSchema):
     status: str = Field(..., pattern=r"^(healthy|degraded|unhealthy)$")
     timestamp: datetime = Field(..., description="Timestamp of the health snapshot")
     version: str = Field(..., description="Application version string")
-    checks: Dict[str, Any] = Field(..., description="Subsystem status breakdown")
+    checks: dict[str, Any] = Field(..., description="Subsystem status breakdown")
     uptime_seconds: int = Field(..., ge=0, description="Service uptime in seconds")
 
 
@@ -101,22 +100,22 @@ class AuditInfo(BaseSchema):
 
     created_at: datetime = Field(...)
     updated_at: datetime = Field(...)
-    created_by: Optional[str] = Field(None)
-    updated_by: Optional[str] = Field(None)
+    created_by: str | None = Field(None)
+    updated_by: str | None = Field(None)
     version: int = Field(..., ge=1)
 
 
 class FilterParams(BaseSchema):
     """Common filter parameters used by list APIs."""
 
-    search: Optional[str] = Field(None, min_length=1, max_length=255)
+    search: str | None = Field(None, min_length=1, max_length=255)
     active_only: bool = Field(True)
-    created_after: Optional[datetime] = Field(None)
-    created_before: Optional[datetime] = Field(None)
+    created_after: datetime | None = Field(None)
+    created_before: datetime | None = Field(None)
 
     @field_validator("created_after", "created_before")
     @classmethod
-    def _validate_dates(cls, value: Optional[datetime]) -> Optional[datetime]:
+    def _validate_dates(cls, value: datetime | None) -> datetime | None:
         """Ensure provided dates are not in the future."""
 
         if value is None:

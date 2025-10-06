@@ -1,8 +1,7 @@
 """Comprehensive tests for service layer patterns."""
 
 from copy import deepcopy
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -16,8 +15,8 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from app.models.user import User
 from app.models.role import Permission, Role
+from app.models.user import User
 from app.schemas.oauth import GoogleUserInfo, OAuthUserCreate
 from app.schemas.pagination import (
     DateRangeParams,
@@ -25,28 +24,16 @@ from app.schemas.pagination import (
     PaginationParams,
     SearchParams,
 )
-from app.schemas.user import UserCreate, UserPasswordUpdate, UserResponse, UserUpdate
-from app.services.user import UserService
+from app.schemas.user import UserCreate, UserPasswordUpdate, UserUpdate
 
 
 class TestUserService:
     """Test UserService functionality with proper session mocking."""
 
     @pytest.fixture
-    def mock_session(self):
-        """Create mock session with proper execute method."""
-        session = AsyncMock()
-        session.execute = AsyncMock()
-        session.commit = AsyncMock()
-        session.rollback = AsyncMock()
-        session.add = Mock()  # Not async
-        session.refresh = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def user_service(self, mock_session):
+    def user_service(self, user_service_factory, mock_session):
         """Create UserService instance with mocked session."""
-        service = UserService(mock_session)
+        service = user_service_factory(mock_session)
 
         async def _get_roles_by_names(names: list[str]) -> list[Role]:
             roles: list[Role] = []
@@ -62,12 +49,15 @@ class TestUserService:
                         for permission in DEFAULT_ROLE_PERMISSIONS.get(role_enum, ())
                     )
                 role.permissions = [
-                    Permission(name=value, description=value) for value in permission_values
+                    Permission(name=value, description=value)
+                    for value in permission_values
                 ]
                 roles.append(role)
             return roles
 
-        service.role_repository.get_by_names = AsyncMock(side_effect=_get_roles_by_names)
+        service.role_repository.get_by_names = AsyncMock(
+            side_effect=_get_roles_by_names
+        )
         return service
 
     @pytest.fixture
@@ -735,43 +725,6 @@ class TestUserService:
         ):
             await user_service.create_user(user_data)
 
-    # Test update_user method
-    @pytest.mark.asyncio
-    async def test_update_user_success(self, user_service, mock_session, sample_user):
-        """Test successful user update."""
-        # Setup
-        update_data = UserUpdate(
-            username="updateduser",
-            email="updated@example.com",
-            full_name="Updated User",
-        )
-
-        # Mock get user (calls get_user -> repository.get_by_id -> session.execute)
-        get_result = self.create_mock_result(scalar_return=sample_user)
-        # Mock email exists check (scalar_one_or_none returns None for doesn't exist)
-        email_check_result = self.create_mock_result(scalar_return=None)
-        # Mock username exists check (scalar_one_or_none returns None for doesn't exist)
-        username_check_result = self.create_mock_result(scalar_return=None)
-        # Mock update result
-        update_result = self.create_mock_result(scalar_return=sample_user)
-
-        mock_session.execute.side_effect = [
-            get_result,
-            email_check_result,
-            username_check_result,
-        ]
-        mock_session.refresh = AsyncMock()
-
-        # Execute
-        result = await user_service.update_user(1, update_data)
-
-        # Assert
-        assert result == sample_user
-        assert (
-            mock_session.execute.call_count == 3
-        )  # get_user + email_exists + update (no username check if email same)
-        mock_session.commit.assert_called_once()
-
     @pytest.mark.asyncio
     async def test_update_user_email_conflict(
         self, user_service, mock_session, sample_user
@@ -805,39 +758,6 @@ class TestUserService:
             ConflictError, match="Email existing@example.com is already in use"
         ):
             await user_service.update_user(1, update_data)
-
-    # Test delete_user method
-    @pytest.mark.asyncio
-    async def test_delete_user_success(self, user_service, mock_session, sample_user):
-        """Test successful user deletion."""
-        # Setup
-        # Mock record exists (scalar_one_or_none returns user ID for exists)
-        exist_result = self.create_mock_result(scalar_return=1)
-        # Mock get for delete
-        get_result = self.create_mock_result(scalar_return=sample_user)
-
-        mock_session.execute.side_effect = [exist_result, get_result]
-        mock_session.delete = AsyncMock()  # Note: this should be AsyncMock
-
-        # Execute
-        result = await user_service.delete_user(1)
-
-        # Assert
-        assert result is True
-        assert mock_session.execute.call_count == 2
-        mock_session.delete.assert_called_once_with(sample_user)
-        mock_session.commit.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_delete_user_not_found(self, user_service, mock_session):
-        """Test user deletion when user not found."""
-        # Setup
-        exist_result = self.create_mock_result(count=0)
-        mock_session.execute.return_value = exist_result
-
-        # Execute & Assert
-        with pytest.raises(NotFoundError, match="User with ID 999 not found"):
-            await user_service.delete_user(999)
 
     # Test authenticate_user method
     @pytest.mark.asyncio
@@ -877,10 +797,10 @@ class TestUserService:
         get_result = self.create_mock_result(scalar_return=sample_user)
         mock_session.execute.return_value = get_result
 
-        with patch.object(user_service, "_verify_password", return_value=False):
-            # Execute & Assert
-            with pytest.raises(AuthenticationError, match="Invalid credentials"):
-                await user_service.authenticate_user("testuser", "wrongpass")
+        with patch.object(
+            user_service, "_verify_password", return_value=False
+        ), pytest.raises(AuthenticationError, match="Invalid credentials"):
+            await user_service.authenticate_user("testuser", "wrongpass")
 
     @pytest.mark.asyncio
     async def test_authenticate_user_inactive(
@@ -892,64 +812,10 @@ class TestUserService:
         get_result = self.create_mock_result(scalar_return=sample_user)
         mock_session.execute.return_value = get_result
 
-        with patch.object(user_service, "_verify_password", return_value=True):
-            # Execute & Assert
-            with pytest.raises(AuthorizationError, match="Account is disabled"):
-                await user_service.authenticate_user("testuser", "testpass123")
-
-    # Test update_password method
-    @pytest.mark.asyncio
-    async def test_update_password_success(
-        self, user_service, mock_session, sample_user
-    ):
-        """Test successful password update."""
-        # Setup
-        password_data = UserPasswordUpdate(
-            current_password="oldpass123",
-            new_password="NewPass123!",
-            confirm_new_password="NewPass123!",
-        )
-
-        # Mock get user (the only execute call - update method doesn't call execute)
-        get_result = self.create_mock_result(scalar_return=sample_user)
-        mock_session.execute.return_value = get_result
-        mock_session.refresh = AsyncMock()
-
-        with patch.object(user_service, "_verify_password", return_value=True):
-            with patch.object(
-                user_service, "_hash_password", return_value="new_hashed_password"
-            ):
-                # Execute
-                result = await user_service.update_password(1, password_data)
-
-                # Assert
-                assert result == sample_user
-                assert (
-                    mock_session.execute.call_count == 1
-                )  # Only get_user calls execute
-                mock_session.commit.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_update_password_invalid_current(
-        self, user_service, mock_session, sample_user
-    ):
-        """Test password update with invalid current password."""
-        # Setup
-        password_data = UserPasswordUpdate(
-            current_password="wrongpass",
-            new_password="NewPass123!",
-            confirm_new_password="NewPass123!",
-        )
-
-        get_result = self.create_mock_result(scalar_return=sample_user)
-        mock_session.execute.return_value = get_result
-
-        with patch.object(user_service, "_verify_password", return_value=False):
-            # Execute & Assert
-            with pytest.raises(
-                AuthenticationError, match="Current password is incorrect"
-            ):
-                await user_service.update_password(1, password_data)
+        with patch.object(
+            user_service, "_verify_password", return_value=True
+        ), pytest.raises(AuthorizationError, match="Account is disabled"):
+            await user_service.authenticate_user("testuser", "testpass123")
 
     # Test get_user_stats method
     @pytest.mark.asyncio

@@ -5,13 +5,12 @@ import logging.config
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import structlog
-from pythonjsonlogger.jsonlogger import JsonFormatter
+from pythonjsonlogger.json import JsonFormatter
 
 from app.core.config import settings
-
 
 HANDLER_CONSOLE = "console"
 HANDLER_APP_JSON = "app_json"
@@ -30,9 +29,9 @@ class StructuredLogFormatter(JsonFormatter):
 
     def add_fields(
         self,
-        log_record: Dict[str, Any],
+        log_record: dict[str, Any],
         record: logging.LogRecord,
-        message_dict: Dict[str, Any],
+        message_dict: dict[str, Any],
     ) -> None:
         super().add_fields(log_record, record, message_dict)
 
@@ -87,7 +86,7 @@ class SafetyAuditFilter(logging.Filter):
 def setup_logging(
     log_level: str = "INFO",
     *,
-    log_directory: Optional[Union[str, Path]] = None,
+    log_directory: str | Path | None = None,
 ) -> None:
     """Configure the structured logging pipeline used by the application."""
 
@@ -249,7 +248,7 @@ def log_audit_event(
     resource_type: str,
     resource_id: str,
     *,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
     success: bool = True,
     **kwargs: Any,
 ) -> None:

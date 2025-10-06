@@ -22,7 +22,6 @@ from app.schemas.oauth import (
 )
 from app.services.user import UserService
 
-
 settings = get_settings()
 
 

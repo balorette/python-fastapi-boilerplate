@@ -16,8 +16,8 @@ def attach_metrics_endpoint(app: FastAPI, *, registry: Any | None = None) -> Non
     try:
         from prometheus_client import (  # type: ignore[import-not-found]
             CONTENT_TYPE_LATEST,
-            CollectorRegistry,
             REGISTRY,
+            CollectorRegistry,
             generate_latest,
         )
     except ImportError:  # pragma: no cover - optional dependency guard

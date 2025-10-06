@@ -5,12 +5,8 @@ These tests focus on realistic authentication flows while avoiding the asyncio
 event loop issues that plague the complex PostgreSQL integration tests.
 """
 
-import pytest
-from unittest.mock import patch
-from fastapi import status
 
 from app.core.security import create_access_token, verify_token
-from app.models.user import User
 
 
 class TestOAuth2RealAuth:
@@ -101,7 +97,8 @@ class TestOAuth2RealAuth:
         """Test that expired JWT tokens are properly rejected."""
 
         # Create an expired token (using negative expiry)
-        from datetime import datetime, timedelta, timezone
+        from datetime import timedelta
+
         from app.core.security import create_access_token
 
         expired_token = create_access_token(

@@ -4,9 +4,9 @@ Test script for Google OAuth implementation
 """
 
 import asyncio
-import os
-from app.services.oauth import GoogleOAuthProvider
+
 from app.core.config import settings
+from app.services.oauth import GoogleOAuthProvider
 
 
 async def test_oauth_service():
@@ -49,14 +49,14 @@ async def test_oauth_service():
 
 async def test_database_oauth_fields():
     """Test that OAuth fields are properly added to User model"""
-    from app.models.user import User
     from app.core.database import AsyncSessionLocal
+    from app.models.user import User
 
     print("\n🗄️  Testing Database OAuth Fields")
     print("=" * 50)
 
     try:
-        async with AsyncSessionLocal() as session:
+        async with AsyncSessionLocal():
             # Test creating an OAuth user
             oauth_user_data = {
                 "email": "test.oauth@gmail.com",

@@ -6,12 +6,12 @@ while avoiding the complex asyncio event loop issues that plague async database 
 Uses MockAsyncSession for database operations but real JWT token generation and validation.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch
-from fastapi import status
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
-from app.core.security import create_access_token, verify_token, get_password_hash
+import pytest
+
+from app.core.security import create_access_token, get_password_hash, verify_token
 from app.models.user import User
 
 
@@ -183,7 +183,7 @@ class TestOAuth2JWTValidation:
 
         # Mock the UserService.get_user method
         with patch("app.services.user.UserService.get_user") as mock_get_user:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             user_obj = User(
                 id=test_user_in_app["id"],
@@ -192,8 +192,8 @@ class TestOAuth2JWTValidation:
                 full_name=test_user_in_app["full_name"],
                 is_active=test_user_in_app["is_active"],
                 is_superuser=test_user_in_app.get("is_superuser", False),
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
             mock_get_user.return_value = user_obj
 
@@ -306,8 +306,8 @@ class TestOAuth2JWTValidation:
 
         # Check expiration is approximately correct (within 1 minute tolerance)
         exp_timestamp = decoded_payload["exp"]
-        expected_exp = datetime.now(timezone.utc) + custom_expiry
-        actual_exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+        expected_exp = datetime.now(UTC) + custom_expiry
+        actual_exp = datetime.fromtimestamp(exp_timestamp, tz=UTC)
 
         time_diff = abs((actual_exp - expected_exp).total_seconds())
         assert time_diff < 60  # Within 1 minute
@@ -362,7 +362,7 @@ class TestOAuth2JWTValidation:
         access_token = create_access_token(token_data)
 
         with patch("app.services.user.UserService.get_user") as mock_get_user:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             user_obj = User(
                 id=test_user_in_app["id"],
@@ -371,8 +371,8 @@ class TestOAuth2JWTValidation:
                 full_name=test_user_in_app["full_name"],
                 is_active=test_user_in_app["is_active"],
                 is_superuser=test_user_in_app.get("is_superuser", False),
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
             mock_get_user.return_value = user_obj
 

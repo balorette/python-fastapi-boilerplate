@@ -33,11 +33,11 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 
 ## 4. Testing & Tooling Refinement (In Progress)
 - [x] Restore `uv run pytest` to green by addressing remaining OAuth/auth integration failures and flaky fixtures.
-- [ ] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow (CI workflow in progress).
-- [ ] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
+- [x] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow (CI workflow in progress).
+- [x] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
-- [ ] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
-  - [x] Migrate structured logging to use `pythonjsonlogger.jsonlogger.JsonFormatter` to remove import deprecation warnings.
+- [x] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
+  - [x] Migrate structured logging to use `pythonjsonlogger.json.JsonFormatter` to remove import deprecation warnings.
 
 ## 5. Documentation & Developer Experience (Completed)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.

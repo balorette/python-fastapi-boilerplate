@@ -40,7 +40,7 @@ class User(Base):
         default=None
     )  # For future API calls
 
-    roles: Mapped[list["Role"]] = relationship(
+    roles: Mapped[list[Role]] = relationship(
         "Role",
         secondary="user_roles",
         back_populates="users",

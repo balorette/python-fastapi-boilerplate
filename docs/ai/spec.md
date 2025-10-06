@@ -197,7 +197,7 @@ class User:
   - Emits `audit` log with correlation + user metadata; increments Prometheus counter `auth_success_total`.
 - `authenticate_credentials(identifier: str, password: str) -> User`
   - Accepts either username or email; normalises case before lookup.
-  - Uses `passlib` context for timing-safe comparison, increments failure metrics on mismatch.
+  - Uses direct `bcrypt` checks for timing-safe comparison, increments failure metrics on mismatch.
   - Raises `InvalidCredentialsError` (HTTP 401) after 3 failed attempts recorded in rolling window.
 - `begin_oauth(provider: str, redirect_uri: str) -> OAuthRedirect`
   - Validates provider is registered, generates PKCE verifier/challenge, stores state in session cache.

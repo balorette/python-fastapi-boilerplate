@@ -18,6 +18,8 @@ from app.services.user import UserService
 
 router = APIRouter()
 
+HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
@@ -42,10 +44,10 @@ async def get_users(
         pagination_params = PaginationParams(skip=skip, limit=limit, order_by=order_by)
         users = await user_service.get_users_paginated(pagination_params)
         return users
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -58,12 +60,12 @@ async def create_user(
     try:
         created_user = await user_service.create_user(user)
         return UserResponse.model_validate(created_user)
-    except ValidationError as e:
+    except ValidationError as exc:
+        raise HTTPException(status_code=HTTP_422_STATUS, detail=exc.message) from exc
+    except ConflictError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
-        )
-    except ConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
+            status_code=status.HTTP_409_CONFLICT, detail=exc.message
+        ) from exc
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -76,8 +78,10 @@ async def get_user(
     try:
         user = await user_service.get_user(user_id)
         return UserResponse.model_validate(user)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=exc.message
+        ) from exc
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -91,14 +95,16 @@ async def update_user(
     try:
         updated_user = await user_service.update_user(user_id, user_update)
         return UserResponse.model_validate(updated_user)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
-    except ValidationError as e:
+    except NotFoundError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
-        )
-    except ConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
+            status_code=status.HTTP_404_NOT_FOUND, detail=exc.message
+        ) from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=HTTP_422_STATUS, detail=exc.message) from exc
+    except ConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=exc.message
+        ) from exc
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -110,8 +116,10 @@ async def delete_user(
     """Delete user by ID."""
     try:
         await user_service.delete_user(user_id)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=exc.message
+        ) from exc
 
 
 @router.get("/search/", response_model=PaginatedResponse[UserResponse])
@@ -129,10 +137,10 @@ async def search_users(
         search_params = SearchParams(query=query, skip=skip, limit=limit, order_by=None)
         users = await user_service.search_users(search_params)
         return users
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get("/active/", response_model=PaginatedResponse[UserResponse])
@@ -150,7 +158,7 @@ async def get_active_users(
         pagination_params = PaginationParams(skip=skip, limit=limit, order_by=order_by)
         users = await user_service.get_active_users_paginated(pagination_params)
         return users
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
