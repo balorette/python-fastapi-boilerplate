@@ -18,8 +18,9 @@ This guide walks contributors through wiring the FastAPI boilerplate into a cont
 2. **Install uv** (if not cached)
 3. **Sync dependencies** with dev extras
 4. **Cache the `.venv/` directory** between runs (optional but speeds up builds)
-5. **Run smoke tests** for fast verification
-6. **Run the full suite** (optional on pull requests, required before merge)
+5. **Run environment verification** via `./scripts/verify-dev-environment.sh` to ensure logs/health probes succeed
+6. **Run smoke tests** for fast verification
+7. **Run the full suite** (optional on pull requests, required before merge)
 
 ### Example GitHub Actions Job
 
@@ -44,6 +45,11 @@ jobs:
           source .venv/bin/activate
           uv sync --dev
 
+      - name: Verify health checks and logs
+        run: |
+          source .venv/bin/activate
+          ./scripts/verify-dev-environment.sh
+
       - name: Run smoke tests
         run: uv run pytest -m smoke --maxfail=1
 
@@ -65,6 +71,7 @@ tests:
     - uv venv --python 3.12
     - source .venv/bin/activate
     - uv sync --dev
+    - ./scripts/verify-dev-environment.sh
   script:
     - uv run pytest -m smoke --maxfail=1
     - uv run pytest

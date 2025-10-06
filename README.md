@@ -46,14 +46,14 @@ Standard Python tooling (already installed with Python)
 ```bash
 git clone <repository-url>
 cd python-fastapi-boilerplate
-./scripts/setup-dev-uv.sh    # Bootstraps env + runs smoke tests with uv
+./scripts/setup-dev-uv.sh    # Bootstraps env, verifies logs/health, runs smoke tests with uv
 ```
 
 **With traditional tools:**
 ```bash
 git clone <repository-url>
 cd python-fastapi-boilerplate
-./scripts/setup-dev.sh       # Traditional pip + venv setup + smoke tests
+./scripts/setup-dev.sh       # Traditional pip + venv setup, verifies logs/health, smoke tests
 ```
 
 **Continue with either method:**
@@ -62,7 +62,7 @@ cd python-fastapi-boilerplate
 cp .env.example .env
 # Edit .env with your configuration
 
-# Start the development server (smoke tests already ran during setup)
+# Start the development server (setup already verified logs + health probes)
 ./scripts/run-dev.sh
 ```
 
@@ -96,7 +96,8 @@ uv pip install -r requirements.txt
 cp .env.example .env
 ./scripts/setup-db.sh sqlite
 
-# (Optional) Run smoke tests
+# (Optional) Re-run verification or smoke tests
+./scripts/verify-dev-environment.sh
 uv run pytest -m smoke --maxfail=1
 
 # Start the server
@@ -116,7 +117,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ./scripts/setup-db.sh sqlite
 
-# (Optional) Run smoke tests
+# (Optional) Re-run verification or smoke tests
+./scripts/verify-dev-environment.sh
 pytest -m smoke --maxfail=1
 
 # Start the server

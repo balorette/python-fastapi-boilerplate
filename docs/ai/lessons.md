@@ -1,6 +1,6 @@
 # Lessons Learned - FastAPI Enterprise Baseline
 
-**Document Version**: 1.0.0  
+**Document Version**: 1.1.0
 **Created**: 2025-01-25  
 **Purpose**: Capture insights, mistakes avoided, and best practices discovered
 
@@ -179,12 +179,20 @@
 **Key Insight**: Tests are not optional overhead—they're development infrastructure.
 
 ### 2. Coverage Quality vs Quantity
-**Lesson**: 38% coverage with failing tests is worse than 20% coverage with passing tests  
-**Context**: High test count but poor test health  
-**Outcome**: Focus on test quality first, then coverage  
-**Application**: Quality before quantity in testing  
+**Lesson**: 38% coverage with failing tests is worse than 20% coverage with passing tests
+**Context**: High test count but poor test health
+**Outcome**: Focus on test quality first, then coverage
+**Application**: Quality before quantity in testing
 
 **Key Insight**: Test coverage metrics are meaningless if tests don't work.
+
+### 3. Automate Health & Logging Verification
+**Lesson**: Setup scripts should validate health probes and log pipelines, not just install dependencies
+**Context**: Added `scripts/verify-dev-environment.sh` and wired it into onboarding to assert `/health` responses and structured logs exist
+**Outcome**: Fresh clones now fail fast when logging breaks or health endpoints regress
+**Application**: Include lightweight runtime assertions in bootstrap scripts to surface configuration drift immediately
+
+**Key Insight**: Environment verification belongs in automation—developers should never discover broken health probes after writing code.
 
 ## Planning and Estimation Insights
 
