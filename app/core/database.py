@@ -8,15 +8,15 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import DisconnectionError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, StaticPool
-from sqlalchemy.exc import DisconnectionError, OperationalError
 
+import app.models  # noqa: F401  # Ensure models are registered with SQLAlchemy metadata
 from app.core.authz import ensure_default_roles
 from app.core.config import settings
 from app.models.base import Base
-import app.models  # noqa: F401  # Ensure models are registered with SQLAlchemy metadata
 
 # Configure logging for database operations
 logger = logging.getLogger(__name__)
@@ -115,9 +115,9 @@ try:
 
     logger.info(f"Database engines created successfully for {settings.DATABASE_TYPE}")
 
-except Exception as e:
-    logger.error(f"Failed to create database engines: {e}")
-    raise RuntimeError(f"Database engine creation failed: {e}")
+except Exception as exc:
+    logger.error(f"Failed to create database engines: {exc}")
+    raise RuntimeError(f"Database engine creation failed: {exc}") from exc
 
 # Configure session makers
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -211,8 +211,8 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             # Wait before retry with exponential backoff
             await asyncio.sleep(2**retry_count)
 
-        except Exception as e:
-            logger.error(f"Unexpected error in async session: {e}")
+        except Exception as exc:
+            logger.error(f"Unexpected error in async session: {exc}")
             if session:
                 await session.rollback()
                 await session.close()
@@ -235,13 +235,13 @@ async def get_async_db_context():
         yield session
         await session.commit()
 
-    except (DisconnectionError, OperationalError) as e:
-        logger.error(f"Database connection error in context manager: {e}")
+    except (DisconnectionError, OperationalError) as exc:
+        logger.error(f"Database connection error in context manager: {exc}")
         if session:
             await session.rollback()
         raise
-    except Exception as e:
-        logger.error(f"Error in database context manager: {e}")
+    except Exception as exc:
+        logger.error(f"Error in database context manager: {exc}")
         if session:
             await session.rollback()
         raise
@@ -266,8 +266,8 @@ async def create_tables():
 
         logger.info("Database tables created successfully")
 
-    except Exception as e:
-        logger.error(f"Failed to create database tables: {e}")
+    except Exception as exc:
+        logger.error(f"Failed to create database tables: {exc}")
         raise
 
 
@@ -295,10 +295,10 @@ async def init_database():
             db_path = str(settings.DATABASE_URL).replace("sqlite:///", "")
             logger.info(f"📁 SQLite database created at: {db_path}")
         else:
-            logger.info(f"🐘 PostgreSQL database connected")
+            logger.info("🐘 PostgreSQL database connected")
 
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize database: {e}")
+    except Exception as exc:
+        logger.error(f"❌ Failed to initialize database: {exc}")
         raise
 
 
@@ -324,9 +324,8 @@ async def check_database_health() -> dict[str, Any]:
                 # Get pool status for PostgreSQL
                 if settings.is_postgresql:
                     try:
-                        pool = async_engine.pool
                         health_status["pool_status"] = {
-                            "pool_available": True,
+                            "pool_available": async_engine.pool is not None,
                             "engine_status": "connected",
                         }
                     except Exception:
@@ -338,10 +337,10 @@ async def check_database_health() -> dict[str, Any]:
                 health_status["connection_status"] = "unhealthy"
                 health_status["error"] = "Health check query returned unexpected result"
 
-    except Exception as e:
+    except Exception as exc:
         health_status["connection_status"] = "error"
-        health_status["error"] = str(e)
-        logger.error(f"Database health check failed: {e}")
+        health_status["error"] = str(exc)
+        logger.error(f"Database health check failed: {exc}")
 
     return health_status
 

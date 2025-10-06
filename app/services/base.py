@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +31,7 @@ class SafetyViolationError(ServiceError):
     """Raised when safety or compliance rules are breached."""
 
 
-class BaseService(ABC):
+class BaseService:
     """Shared base class providing audit-aware logging and validation helpers."""
 
     def __init__(self, service_name: str) -> None:
@@ -43,9 +42,9 @@ class BaseService(ABC):
         self,
         operation: str,
         *,
-        entity_id: Optional[UUID | str] = None,
-        user_id: Optional[UUID | str] = None,
-        extra_context: Optional[Dict[str, Any]] = None,
+        entity_id: UUID | str | None = None,
+        user_id: UUID | str | None = None,
+        extra_context: dict[str, Any] | None = None,
     ) -> None:
         """Emit a structured log entry describing a successful operation."""
 
@@ -64,9 +63,9 @@ class BaseService(ABC):
         operation: str,
         error: Exception,
         *,
-        entity_id: Optional[UUID | str] = None,
-        user_id: Optional[UUID | str] = None,
-        extra_context: Optional[Dict[str, Any]] = None,
+        entity_id: UUID | str | None = None,
+        user_id: UUID | str | None = None,
+        extra_context: dict[str, Any] | None = None,
     ) -> None:
         """Emit a structured error log describing a failed operation."""
 
@@ -104,7 +103,7 @@ class BaseService(ABC):
         *,
         field_name: str,
         field_value: Any,
-        exclude_id: Optional[Any] = None,
+        exclude_id: Any | None = None,
         entity_name: str = "Entity",
     ) -> None:
         """Guard against duplicate values for fields that must be unique."""
@@ -122,7 +121,7 @@ class BaseService(ABC):
 
     def _validate_business_rules(
         self,
-        rules: Dict[str, bool],
+        rules: dict[str, bool],
         *,
         context: str = "Operation",
     ) -> None:
@@ -138,12 +137,12 @@ class BaseService(ABC):
         self,
         operation: str,
         *,
-        user_id: Optional[UUID | str] = None,
-        extra_context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        user_id: UUID | str | None = None,
+        extra_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Return a dictionary suitable for audit logging metadata."""
 
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             "operation": operation,
             "service": self.service_name,
             "user_id": str(user_id) if user_id else None,
@@ -154,11 +153,11 @@ class BaseService(ABC):
 
     def _sanitize_update_data(
         self,
-        update_data: Dict[str, Any],
+        update_data: dict[str, Any],
         *,
-        allowed_fields: Optional[set[str]] = None,
-        forbidden_fields: Optional[set[str]] = None,
-    ) -> Dict[str, Any]:
+        allowed_fields: set[str] | None = None,
+        forbidden_fields: set[str] | None = None,
+    ) -> dict[str, Any]:
         """Strip forbidden keys and ``None`` values from update payloads."""
 
         sanitized = {
@@ -179,9 +178,9 @@ class BaseService(ABC):
         repository: Any,
         *,
         pagination: PaginationParams,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        load_relationships: Optional[list[str]] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        load_relationships: list[str] | None = None,
     ) -> PaginatedResponse[Any]:
         """Return a paginated response leveraging the repository helpers."""
 

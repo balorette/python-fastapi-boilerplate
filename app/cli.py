@@ -6,8 +6,8 @@ import getpass
 import typer
 
 from app.core.database import (
-    get_async_db_context,
     close_database_connections,
+    get_async_db_context,
     init_database,
 )
 from app.core.exceptions import ConflictError
@@ -44,12 +44,12 @@ async def create_admin_user(
             typer.echo(f"   Email: {admin_user.email}")
             typer.echo(f"   ID: {admin_user.id}")
 
-        except ConflictError as e:
-            typer.echo(f"❌ Error: {e}")
-            raise typer.Exit(1)
-        except Exception as e:
-            typer.echo(f"❌ Unexpected error: {e}")
-            raise typer.Exit(1)
+        except ConflictError as exc:
+            typer.echo(f"❌ Error: {exc}")
+            raise typer.Exit(1) from exc
+        except Exception as exc:
+            typer.echo(f"❌ Unexpected error: {exc}")
+            raise typer.Exit(1) from exc
 
 
 @app.command()
@@ -98,7 +98,7 @@ def init_admin(
         asyncio.run(_create_user_and_cleanup())
     except KeyboardInterrupt:
         typer.echo("\n❌ Admin user creation cancelled.")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -109,15 +109,15 @@ def init_db():
         try:
             await init_database()
             typer.echo("✅ Database initialized successfully!")
-        except Exception as e:
-            typer.echo(f"❌ Error initializing database: {e}")
+        except Exception as exc:
+            typer.echo(f"❌ Error initializing database: {exc}")
             raise
 
     try:
         asyncio.run(_init_db())
-    except Exception as e:
-        typer.echo(f"❌ Database initialization failed: {e}")
-        raise typer.Exit(1)
+    except Exception as exc:
+        typer.echo(f"❌ Database initialization failed: {exc}")
+        raise typer.Exit(1) from exc
 
 
 @app.command()
@@ -156,8 +156,8 @@ def setup(
             await create_admin_user(username, email, password, full_name)
             typer.echo("✅ Admin user created successfully!")
 
-        except Exception as e:
-            typer.echo(f"❌ Setup failed: {e}")
+        except Exception as exc:
+            typer.echo(f"❌ Setup failed: {exc}")
             raise
         finally:
             # Ensure proper database cleanup
@@ -165,9 +165,9 @@ def setup(
 
     try:
         asyncio.run(_complete_setup())
-    except Exception as e:
-        typer.echo(f"❌ Setup failed: {e}")
-        raise typer.Exit(1)
+    except Exception as exc:
+        typer.echo(f"❌ Setup failed: {exc}")
+        raise typer.Exit(1) from exc
 
     typer.echo("\n🎉 Application setup completed successfully!")
     typer.echo("\n📝 Admin credentials:")

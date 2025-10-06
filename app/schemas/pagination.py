@@ -1,6 +1,6 @@
 """Pagination schemas for API responses."""
 
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -54,14 +54,14 @@ class FilterParams(PaginationParams):
     def validate_filters(cls, v):
         if v is not None:
             # Validate filter structure
-            for key, value in v.items():
+            for key, _value in v.items():
                 if not isinstance(key, str):
                     raise ValueError("Filter keys must be strings")
                 # Add more validation as needed
         return v
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Generic paginated response wrapper."""
 
     items: list[T] = Field(..., description="List of items")
@@ -112,7 +112,7 @@ class DateRangeParams(BaseModel):
             except ValueError:
                 raise ValueError(
                     "Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)"
-                )
+                ) from None
         return v
 
     @field_validator("end_date")

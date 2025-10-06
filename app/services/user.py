@@ -1,9 +1,9 @@
 """Enhanced user service with comprehensive business logic."""
 
+from collections.abc import Iterable
 from datetime import UTC
-from typing import Any, Iterable
+from typing import Any
 
-from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authz import SystemRole
@@ -14,6 +14,7 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.repositories.role import RoleRepository
 from app.repositories.user import UserRepository
@@ -26,9 +27,6 @@ from app.schemas.pagination import (
 )
 from app.schemas.user import UserCreate, UserPasswordUpdate, UserResponse, UserUpdate
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class UserService:
     """Enhanced user service with comprehensive business logic."""
@@ -39,11 +37,11 @@ class UserService:
 
     def _hash_password(self, password: str) -> str:
         """Hash a password using bcrypt."""
-        return pwd_context.hash(password)
+        return get_password_hash(password)
 
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
-        return pwd_context.verify(plain_password, hashed_password)
+        return verify_password(plain_password, hashed_password)
 
     def _derive_username_seed(self, value: str) -> str:
         """Create a base username seed from an email or raw username."""
@@ -88,8 +86,8 @@ class UserService:
                 self._determine_role_names(user.is_superuser, user_data.role_names),
             )
             return user
-        except Exception as e:
-            raise ValidationError(f"Failed to create user: {str(e)}")
+        except Exception as exc:
+            raise ValidationError(f"Failed to create user: {str(exc)}") from exc
 
     async def get_user(
         self,
@@ -256,24 +254,22 @@ class UserService:
         update_dict = user_data.model_dump(exclude_unset=True, exclude={"role_names"})
 
         # Validate email uniqueness if being updated
-        if "email" in update_dict:
-            if await self.repository.exists(
-                field_name="email",
-                field_value=update_dict["email"],
-                exclude_id=user_id,
-            ):
-                raise ConflictError(f"Email {update_dict['email']} is already in use")
+        if "email" in update_dict and await self.repository.exists(
+            field_name="email",
+            field_value=update_dict["email"],
+            exclude_id=user_id,
+        ):
+            raise ConflictError(f"Email {update_dict['email']} is already in use")
 
         # Validate username uniqueness if being updated
-        if "username" in update_dict:
-            if await self.repository.exists(
-                field_name="username",
-                field_value=update_dict["username"],
-                exclude_id=user_id,
-            ):
-                raise ConflictError(
-                    f"Username {update_dict['username']} is already taken"
-                )
+        if "username" in update_dict and await self.repository.exists(
+            field_name="username",
+            field_value=update_dict["username"],
+            exclude_id=user_id,
+        ):
+            raise ConflictError(
+                f"Username {update_dict['username']} is already taken"
+            )
 
         try:
             updated_user = await self.repository.update(user, update_dict)
@@ -282,8 +278,8 @@ class UserService:
                     updated_user, self._sanitize_role_names(user_data.role_names)
                 )
             return updated_user
-        except Exception as e:
-            raise ValidationError(f"Failed to update user: {str(e)}")
+        except Exception as exc:
+            raise ValidationError(f"Failed to update user: {str(exc)}") from exc
 
     async def update_password(
         self, user_id: int, password_data: UserPasswordUpdate
@@ -308,8 +304,8 @@ class UserService:
 
         try:
             return await self.repository.update(user, update_dict)
-        except Exception as e:
-            raise ValidationError(f"Failed to update password: {str(e)}")
+        except Exception as exc:
+            raise ValidationError(f"Failed to update password: {str(exc)}") from exc
 
     async def delete_user(self, user_id: int) -> bool:
         """Delete a user."""
@@ -318,8 +314,8 @@ class UserService:
 
         try:
             return await self.repository.delete(user_id)
-        except Exception as e:
-            raise ValidationError(f"Failed to delete user: {str(e)}")
+        except Exception as exc:
+            raise ValidationError(f"Failed to delete user: {str(exc)}") from exc
 
     async def activate_user(self, user_id: int) -> User:
         """Activate a user account."""
@@ -434,8 +430,8 @@ class UserService:
                 ),
             )
             return user
-        except Exception as e:
-            raise ConflictError(f"Failed to create OAuth user: {str(e)}")
+        except Exception as exc:
+            raise ConflictError(f"Failed to create OAuth user: {str(exc)}") from exc
 
     async def link_oauth_account(
         self, user_id: int, oauth_data: OAuthUserCreate
@@ -461,8 +457,8 @@ class UserService:
                     self._determine_role_names(updated_user.is_superuser, None),
                 )
             return updated_user
-        except Exception as e:
-            raise ConflictError(f"Failed to link OAuth account: {str(e)}")
+        except Exception as exc:
+            raise ConflictError(f"Failed to link OAuth account: {str(exc)}") from exc
 
     async def get_by_oauth_id(
         self,
@@ -501,8 +497,8 @@ class UserService:
             try:
                 updated_user = await self.repository.update(existing_user, update_data)
                 return updated_user, False
-            except Exception as e:
-                raise ConflictError(f"Failed to update OAuth user: {str(e)}")
+            except Exception as exc:
+                raise ConflictError(f"Failed to update OAuth user: {str(exc)}") from exc
 
         # Create OAuth user data
         oauth_user_data = OAuthUserCreate(

@@ -20,6 +20,8 @@ from app.core.database import get_async_db
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
+)
+from app.core.exceptions import (
     ValidationError as AppValidationError,
 )
 from app.core.security import (
@@ -30,12 +32,12 @@ from app.core.security import (
 from app.schemas.oauth import (
     AuthorizationRequest,
     AuthorizationResponse,
+    GoogleUserInfo,
     LocalLoginRequest,
     RefreshTokenRequest,
     TokenRequest,
     TokenResponse,
 )
-from app.schemas.oauth import GoogleUserInfo
 from app.services.auth import AuthService
 from app.services.oauth import OAuthProviderFactory
 from app.services.user import UserService
@@ -340,11 +342,11 @@ async def refresh_token_endpoint(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Token refresh failed: {str(e)}",
-        )
+            detail=f"Token refresh failed: {str(exc)}",
+        ) from exc
 
 
 @router.get("/providers")
@@ -417,7 +419,7 @@ async def revoke_token(
     In a production system, you'd maintain a token blacklist.
     """
     try:
-        payload = verify_token(token)
+        verify_token(token)
 
         # In production, add token to blacklist/revocation list
         # For now, we'll just verify the token is valid

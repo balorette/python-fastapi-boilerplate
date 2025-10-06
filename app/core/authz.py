@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import Enum
-from typing import Iterable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,9 +31,7 @@ DEFAULT_ROLE_PERMISSIONS: dict[SystemRole, tuple[SystemPermission, ...]] = {
         SystemPermission.USERS_READ,
         SystemPermission.USERS_MANAGE,
     ),
-    SystemRole.MEMBER: (
-        SystemPermission.USERS_READ,
-    ),
+    SystemRole.MEMBER: (SystemPermission.USERS_READ,),
 }
 
 

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.exceptions import APIException, DatabaseError
+from app.core.exceptions import APIError, DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 def register_error_handlers(app: FastAPI) -> None:
     """Register all error handlers with the FastAPI app."""
 
-    @app.exception_handler(APIException)
+    @app.exception_handler(APIError)
     async def api_exception_handler(
-        request: Request, exc: APIException
+        request: Request, exc: APIError
     ) -> JSONResponse:
         """Handle custom API exceptions."""
         logger.error(

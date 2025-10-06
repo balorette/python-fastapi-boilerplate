@@ -2,31 +2,31 @@
 Comprehensive tests for OAuth2 flows, PKCE validation, and token handling.
 """
 
-import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
+import pytest
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import AuthenticationError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
-    verify_token,
     generate_pkce_pair,
-    verify_pkce,
     get_password_hash,
+    verify_pkce,
+    verify_token,
 )
 from app.models.user import User
 from app.schemas.oauth import (
     AuthorizationRequest,
     AuthorizationResponse,
-    TokenRequest,
-    TokenResponse,
     LocalLoginRequest,
     RefreshTokenRequest,
+    TokenRequest,
+    TokenResponse,
 )
-from app.core.exceptions import AuthenticationError
 
 
 class TestOAuth2Security:
@@ -64,8 +64,8 @@ class TestOAuth2Security:
         token = create_access_token(data, expires_delta_minutes=5)
 
         payload = verify_token(token)
-        exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        now = datetime.now(timezone.utc)
+        exp_time = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        now = datetime.now(UTC)
 
         # Should expire in approximately 5 minutes
         assert timedelta(minutes=4) < (exp_time - now) < timedelta(minutes=6)
@@ -256,7 +256,7 @@ class TestOAuth2Endpoints:
 
             mock_db = AsyncMock()
 
-            with pytest.raises(Exception):
+            with pytest.raises(HTTPException):
                 await authorize(request, mock_db)
 
     async def test_token_exchange_local_success(self):

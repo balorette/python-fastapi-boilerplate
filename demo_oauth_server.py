@@ -4,9 +4,7 @@ Demo OAuth server to test Google OAuth implementation
 Run this to test the OAuth endpoints locally
 """
 
-import asyncio
 import uvicorn
-from app.main import app
 
 if __name__ == "__main__":
     print("🚀 Starting OAuth Demo Server")

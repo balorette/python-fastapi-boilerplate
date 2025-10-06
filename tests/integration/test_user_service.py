@@ -1,20 +1,20 @@
 """Integration tests for UserService with real PostgreSQL database operations."""
 
-import pytest
 import asyncio
-from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
+from datetime import UTC, datetime, timedelta
 
-from app.services.user import UserService
-from app.schemas.user import UserCreate, UserUpdate, UserPasswordUpdate
-from app.schemas.pagination import PaginationParams, SearchParams, DateRangeParams
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.exceptions import (
-    NotFoundError,
-    ConflictError,
-    ValidationError,
     AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
 )
+from app.schemas.pagination import DateRangeParams, PaginationParams, SearchParams
+from app.schemas.user import UserCreate, UserPasswordUpdate, UserUpdate
+from app.services.user import UserService
 
 
 class TestUserServiceIntegration:
@@ -407,10 +407,10 @@ class TestUserServiceIntegration:
         service = UserService(async_db_session)
 
         # Create users and manipulate their creation dates
-        from app.models.user import User
-        from datetime import datetime, timezone
 
-        base_date = datetime.now(timezone.utc)
+        from app.models.user import User
+
+        base_date = datetime.now(UTC)
 
         # Create users for different date ranges
         old_user_data = User(

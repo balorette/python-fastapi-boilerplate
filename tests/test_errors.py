@@ -11,6 +11,7 @@ from app.services.base import (
     EntityNotFoundError,
 )
 
+HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
 
 def _build_app() -> FastAPI:
     app = FastAPI()
@@ -69,7 +70,7 @@ def test_business_rule_violation_maps_to_unprocessable_entity():
     client = TestClient(app, raise_server_exceptions=False)
     response = client.get("/rule")
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == HTTP_422_STATUS
     payload = response.json()
     assert payload["error"] == "business_rule_violation"
     assert payload["message"] == "Safety checks failed"

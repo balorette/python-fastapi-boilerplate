@@ -72,10 +72,14 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                 response = await client.post(self.token_uri, data=data)
                 response.raise_for_status()
                 return response.json()
-            except httpx.HTTPStatusError as e:
-                raise AuthenticationError(f"Token exchange failed: {e.response.text}")
-            except Exception as e:
-                raise AuthenticationError(f"Token exchange error: {str(e)}")
+            except httpx.HTTPStatusError as exc:
+                raise AuthenticationError(
+                    f"Token exchange failed: {exc.response.text}"
+                ) from exc
+            except Exception as exc:
+                raise AuthenticationError(
+                    f"Token exchange error: {str(exc)}"
+                ) from exc
 
     async def validate_id_token(self, id_token_str: str) -> dict[str, Any]:
         """Validate Google ID token using Google's public keys."""
@@ -91,10 +95,12 @@ class GoogleOAuthProvider(BaseOAuthProvider):
 
             return id_info
 
-        except ValueError as e:
-            raise AuthenticationError(f"Invalid ID token: {str(e)}")
-        except Exception as e:
-            raise AuthenticationError(f"ID token validation error: {str(e)}")
+        except ValueError as exc:
+            raise AuthenticationError(f"Invalid ID token: {str(exc)}") from exc
+        except Exception as exc:
+            raise AuthenticationError(
+                f"ID token validation error: {str(exc)}"
+            ) from exc
 
     async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Get user information from Google's userinfo endpoint."""
@@ -105,10 +111,14 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                 response = await client.get(self.userinfo_uri, headers=headers)
                 response.raise_for_status()
                 return response.json()
-            except httpx.HTTPStatusError as e:
-                raise AuthenticationError(f"Failed to get user info: {e.response.text}")
-            except Exception as e:
-                raise AuthenticationError(f"User info error: {str(e)}")
+            except httpx.HTTPStatusError as exc:
+                raise AuthenticationError(
+                    f"Failed to get user info: {exc.response.text}"
+                ) from exc
+            except Exception as exc:
+                raise AuthenticationError(
+                    f"User info error: {str(exc)}"
+                ) from exc
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh Google access token."""
@@ -124,7 +134,11 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                 response = await client.post(self.token_uri, data=data)
                 response.raise_for_status()
                 return response.json()
-            except httpx.HTTPStatusError as e:
-                raise AuthenticationError(f"Token refresh failed: {e.response.text}")
-            except Exception as e:
-                raise AuthenticationError(f"Token refresh error: {str(e)}")
+            except httpx.HTTPStatusError as exc:
+                raise AuthenticationError(
+                    f"Token refresh failed: {exc.response.text}"
+                ) from exc
+            except Exception as exc:
+                raise AuthenticationError(
+                    f"Token refresh error: {str(exc)}"
+                ) from exc

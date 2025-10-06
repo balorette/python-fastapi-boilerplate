@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from types import SimpleNamespace
 
 from app.api.v1.endpoints import auth as auth_module
 from app.schemas.user import UserCreate
@@ -100,24 +100,13 @@ def test_authorize_google_requires_redirect(
 
 def test_authorize_google_returns_redirect(
     client_with_db: TestClient,
-    monkeypatch,
+    patch_oauth_provider_factory,
+    oauth_provider_stub,
 ) -> None:
     """External provider should return authorization URL with defaults."""
 
-    class DummyProvider:
-        async def get_authorization_url(self, **_: str) -> str:
-            return "https://auth.example.com/oauth"
-
-    dummy_provider = DummyProvider()
-
-    def fake_create_provider(cls, provider_name: str) -> DummyProvider:  # type: ignore[unused-argument]
-        return dummy_provider
-
-    monkeypatch.setattr(
-        auth_module.OAuthProviderFactory,
-        "create_provider",
-        classmethod(fake_create_provider),
-    )
+    oauth_provider_stub.authorization_url = "https://auth.example.com/oauth"
+    patch_oauth_provider_factory(oauth_provider_stub)
 
     response = client_with_db.post(
         "/api/v1/auth/authorize",
@@ -168,40 +157,10 @@ def test_token_requires_authorization_code(client_with_db: TestClient) -> None:
 async def test_token_google_flow_returns_tokens(
     client_with_db: TestClient,
     monkeypatch,
+    patch_oauth_provider_factory,
+    oauth_provider_stub,
 ) -> None:
     """Google token exchange path should mint local tokens when provider succeeds."""
-
-    class DummyProvider:
-        async def get_authorization_url(self, **_: str) -> str:
-            return "https://auth.example.com/oauth"
-
-        async def exchange_code_for_tokens(self, **_: str) -> dict[str, str]:
-            return {
-                "access_token": "remote-access",
-                "refresh_token": "remote-refresh",
-                "scope": "openid email profile",
-                "id_token": "remote-id",
-            }
-
-        async def get_user_info(self, _: str) -> dict[str, str | bool]:
-            return {
-                "id": "google-id",
-                "email": "oauth@example.com",
-                "verified_email": True,
-                "name": "OAuth Example",
-                "given_name": "OAuth",
-                "family_name": "Example",
-                "picture": None,
-                "locale": "en-US",
-            }
-
-        async def validate_id_token(self, _: str) -> dict[str, str]:
-            return {"sub": "google-id"}
-
-    dummy_provider = DummyProvider()
-
-    def fake_create_provider(cls, provider_name: str) -> DummyProvider:  # type: ignore[unused-argument]
-        return dummy_provider
 
     async def fake_create_or_update(
         self,
@@ -216,11 +175,24 @@ async def test_token_google_flow_returns_tokens(
         )
         return user, True
 
-    monkeypatch.setattr(
-        auth_module.OAuthProviderFactory,
-        "create_provider",
-        classmethod(fake_create_provider),
-    )
+    oauth_provider_stub.tokens_response = {
+        "access_token": "remote-access",
+        "refresh_token": "remote-refresh",
+        "scope": "openid email profile",
+        "id_token": "remote-id",
+    }
+    oauth_provider_stub.user_info_response = {
+        "id": "google-id",
+        "email": "oauth@example.com",
+        "verified_email": True,
+        "name": "OAuth Example",
+        "given_name": "OAuth",
+        "family_name": "Example",
+        "picture": None,
+        "locale": "en-US",
+    }
+    oauth_provider_stub.id_info_response = {"sub": "google-id"}
+    patch_oauth_provider_factory(oauth_provider_stub)
     monkeypatch.setattr(
         auth_module.UserService,
         "create_or_update_oauth_user",

@@ -20,7 +20,6 @@ from app.core.database import init_database
 from app.core.error_handlers import register_error_handlers
 from app.core.logging import get_logger, setup_logging
 
-
 logger = get_logger("app.main")
 
 

@@ -9,12 +9,11 @@ from pathlib import Path
 app_dir = Path(__file__).parent / "app"
 sys.path.insert(0, str(app_dir.parent))
 
-from app.core.database import init_database
-import app.models  # noqa: F401  # Ensure models are loaded before table creation
-
-
 async def main():
     """Initialize the database."""
+    import app.models  # noqa: F401  # Ensure models are loaded before table creation
+    from app.core.database import init_database
+
     try:
         await init_database()
         print("✅ Database initialization completed successfully!")

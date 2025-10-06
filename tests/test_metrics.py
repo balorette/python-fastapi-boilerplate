@@ -5,13 +5,12 @@ from __future__ import annotations
 import builtins
 import sys
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from fastapi import FastAPI
-
 from app.api.routes import metrics
-from app.core.config import settings
 from app.api.routes.metrics import attach_metrics_endpoint
+from app.core.config import settings
 from main import create_application
 
 

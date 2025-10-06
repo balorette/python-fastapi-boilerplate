@@ -1,7 +1,7 @@
 """Debug test for OAuth login endpoint."""
 
-import pytest
 from unittest.mock import patch
+
 from app.core.security import get_password_hash
 from app.models.user import User
 
@@ -57,7 +57,7 @@ def test_debug_oauth_login(client):
             try:
                 error_data = response.json()
                 print(f"Error JSON: {error_data}")
-            except:
+            except ValueError:
                 print("Could not parse error as JSON")
 
         assert response.status_code == 200, (

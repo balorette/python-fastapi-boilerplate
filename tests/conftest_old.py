@@ -1,15 +1,12 @@
 """Test configuration and fixtures."""
 
-import asyncio
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base, get_db, get_async_db
-from app.api.dependencies import get_user_service
+from app.core.database import Base, get_db
 from app.services.user import UserService
 from main import app
 
@@ -65,15 +62,6 @@ async def override_get_user_service():
             raise e
         finally:
             await session.close()
-
-
-def override_get_db():
-    """Override database dependency for testing."""
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
 
 
 @pytest.fixture

@@ -8,13 +8,13 @@ SAFETY: Provides runtime assurances for mission critical drone operations
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
+import psutil
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-import psutil
 
 from app.api.dependencies import get_db_session
 from app.core.config import get_settings
@@ -24,10 +24,10 @@ from app.schemas.common import HealthCheck as HealthCheckSchema
 router = APIRouter()
 
 
-async def _collect_database_check(session: AsyncSession) -> Dict[str, Any]:
+async def _collect_database_check(session: AsyncSession) -> dict[str, Any]:
     """Gather health indicators for the primary database."""
     started = time.perf_counter()
-    check: Dict[str, Any] = {"status": "unhealthy"}
+    check: dict[str, Any] = {"status": "unhealthy"}
 
     try:
         await session.execute(text("SELECT 1"))
@@ -96,7 +96,7 @@ def _calculate_block_hit_rate(block_hits: int | None, block_reads: int | None) -
     return round((hits / total) * 100, 2)
 
 
-def _collect_system_metrics(settings) -> Dict[str, Any]:
+def _collect_system_metrics(settings) -> dict[str, Any]:
     """Gather process and host level metrics via psutil."""
     try:
         memory = psutil.virtual_memory()
@@ -114,7 +114,7 @@ def _collect_system_metrics(settings) -> Dict[str, Any]:
             status = "degraded"
             warnings.append("Resource usage approaching critical thresholds")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "status": status,
             "cpu_percent": cpu_percent,
             "memory_percent": memory.percent,
@@ -135,7 +135,7 @@ def _collect_system_metrics(settings) -> Dict[str, Any]:
         }
 
 
-def _collect_configuration_check(settings) -> Dict[str, Any]:
+def _collect_configuration_check(settings) -> dict[str, Any]:
     """Summarise configuration flags that affect runtime safety."""
     status = "healthy"
     warnings = []
@@ -159,7 +159,7 @@ def _collect_configuration_check(settings) -> Dict[str, Any]:
     }
 
 
-def _derive_overall_status(checks: Dict[str, Dict[str, Any]]) -> str:
+def _derive_overall_status(checks: dict[str, dict[str, Any]]) -> str:
     """Derive overall status from component checks."""
     severity_order = {
         "healthy": 0,
@@ -222,7 +222,7 @@ async def health_summary(
     except Exception as exc:  # pragma: no cover - defensive
         module_check = {"status": "unhealthy", "error": str(exc)}
 
-    checks: Dict[str, Dict[str, Any]] = {
+    checks: dict[str, dict[str, Any]] = {
         "database": database_check,
         "system": system_metrics,
         "configuration": configuration_check,
@@ -233,7 +233,7 @@ async def health_summary(
 
     return HealthCheckSchema(
         status=overall_status,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         version=settings.app_version,
         checks=checks,
         uptime_seconds=_uptime_seconds(),
@@ -245,11 +245,11 @@ async def health_summary(
     summary="Liveness probe",
     description="Kubernetes liveness probe for Astraeus.",
 )
-async def liveness_probe() -> Dict[str, Any]:
+async def liveness_probe() -> dict[str, Any]:
     """Simple liveness probe indicating the API process is running."""
     return {
         "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -260,7 +260,7 @@ async def liveness_probe() -> Dict[str, Any]:
 )
 async def readiness_probe(
     session: AsyncSession = Depends(get_db_session),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Readiness probe that ensures the database is reachable."""
     try:
         await session.execute(text("SELECT 1"))
@@ -270,11 +270,11 @@ async def readiness_probe(
             detail={
                 "status": "unhealthy",
                 "error": str(exc),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
-        )
+        ) from exc
 
     return {
         "status": "ready",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

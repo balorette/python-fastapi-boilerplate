@@ -16,7 +16,6 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "aiosqlite>=0.19.0",
     "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
     "bcrypt>=3.2,<4.0",
     "python-multipart>=0.0.6",
     "httpx>=0.25.0",
@@ -71,6 +70,7 @@ select = [
 ]
 ignore = [
     "E501", # Line too long (handled by formatter)
+    "B008", # FastAPI dependency injection relies on Depends in defaults
 ]
 
 # Configure automatic fixes

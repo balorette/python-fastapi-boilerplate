@@ -2,8 +2,8 @@
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql import Select
 
 from app.models.role import Role
 from app.models.user import User
@@ -81,7 +81,7 @@ class UserRepository(BaseRepository[User]):
         load_role_hierarchy: bool = False,
     ) -> list[User]:
         """Get all active users with optional ordering."""
-        stmt = select(User).where(User.is_active == True)
+        stmt = select(User).where(User.is_active.is_(True))
         stmt = self._with_role_hierarchy(stmt, load_role_hierarchy)
 
         # Apply ordering

@@ -67,10 +67,10 @@ async def get_current_user(
         # If we get here, token validation failed
         raise credentials_exception
 
-    except AuthenticationError:
-        raise credentials_exception
-    except Exception:
-        raise credentials_exception
+    except AuthenticationError as exc:
+        raise credentials_exception from exc
+    except Exception as exc:
+        raise credentials_exception from exc
 
 
 async def get_current_active_user(

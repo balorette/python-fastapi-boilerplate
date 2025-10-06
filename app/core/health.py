@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import platform
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from app.core.config import settings
 
@@ -15,11 +15,11 @@ def _status_from_flags(*flags: bool) -> str:
     return "healthy" if all(flags) else "degraded"
 
 
-async def get_system_health() -> Dict[str, Any]:
+async def get_system_health() -> dict[str, Any]:
     """Return component and feature flag health used by system endpoints."""
 
     logging_active = settings.audit_log_enabled and settings.safety_checks_enabled
-    feature_flags: Dict[str, Any] = {
+    feature_flags: dict[str, Any] = {
         "audit_logging": {
             "status": "healthy" if settings.audit_log_enabled else "degraded",
             "enabled": settings.audit_log_enabled,
@@ -37,16 +37,16 @@ async def get_system_health() -> Dict[str, Any]:
     platform_metrics = {
         "python_version": platform.python_version(),
         "platform": platform.platform(),
-        "snapshot_time": datetime.now(timezone.utc).isoformat(),
+        "snapshot_time": datetime.now(UTC).isoformat(),
     }
 
-    alerts: List[str] = []
+    alerts: list[str] = []
     if not settings.audit_log_enabled:
         alerts.append("Audit logging disabled - enable for compliance tracking")
     if not settings.safety_checks_enabled:
         alerts.append("Safety checks disabled - re-enable before production")
 
-    components: Dict[str, Any] = {
+    components: dict[str, Any] = {
         "logging": {
             "status": "healthy" if logging_active else "degraded",
             "log_directory": settings.log_directory,
@@ -88,5 +88,5 @@ async def get_system_health() -> Dict[str, Any]:
         "components": components,
         "metrics": metrics | {"platform": platform_metrics},
         "alerts": alerts,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }

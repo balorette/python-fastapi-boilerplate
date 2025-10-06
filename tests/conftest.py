@@ -3,7 +3,9 @@
 import asyncio
 import os
 import tempfile
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +20,7 @@ from app.core.security import get_password_hash
 from app.models.base import Base
 from app.models.role import Role
 from app.models.user import User
+from app.services.oauth.factory import OAuthProviderFactory
 from app.services.user import UserService
 from main import app
 
@@ -85,6 +88,104 @@ def override_get_user_service(async_db_session: AsyncSession):
         return UserService(async_db_session)
 
     return _override
+
+
+@pytest.fixture
+def mock_session() -> AsyncSession:
+    """Provide a configurable AsyncSession mock for service and repository tests."""
+
+    session = AsyncMock(spec=AsyncSession)
+    session.execute = AsyncMock()
+    session.get = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    session.delete = AsyncMock()
+    session.close = AsyncMock()
+    session.flush = AsyncMock()
+    return session
+
+
+@pytest.fixture
+def user_service_factory(mock_session: AsyncSession):
+    """Factory for creating UserService instances backed by a mock session."""
+
+    def _factory(session: AsyncSession | None = None) -> UserService:
+        service = UserService(session or mock_session)
+        return service
+
+    return _factory
+
+
+class OAuthProviderStub:
+    """Reusable OAuth provider stub for endpoint and service tests."""
+
+    def __init__(self) -> None:
+        self.authorization_url = "https://oauth.example.com/authorize"
+        self.tokens_response: dict = {
+            "access_token": "stub-access-token",
+            "refresh_token": "stub-refresh-token",
+            "scope": "openid email profile",
+            "id_token": "stub-id-token",
+        }
+        self.user_info_response: dict = {
+            "id": "stub-user",
+            "email": "stub@example.com",
+            "verified_email": True,
+            "name": "Stub User",
+        }
+        self.id_info_response: dict = {
+            "sub": "stub-user",
+            "email": "stub@example.com",
+            "name": "Stub User",
+            "email_verified": True,
+        }
+        self.refreshed_tokens: dict = {
+            "access_token": "stub-access-token-2",
+            "refresh_token": "stub-refresh-token-2",
+            "scope": "openid email profile",
+        }
+
+    async def get_authorization_url(self, **_: str) -> str:
+        return self.authorization_url
+
+    async def exchange_code_for_tokens(self, *args, **kwargs) -> dict:
+        return self.tokens_response
+
+    async def get_user_info(self, *args, **kwargs) -> dict:
+        return self.user_info_response
+
+    async def validate_id_token(self, *args, **kwargs) -> dict:
+        return self.id_info_response
+
+    async def refresh_access_token(self, *args, **kwargs) -> dict:
+        return self.refreshed_tokens
+
+
+@pytest.fixture
+def oauth_provider_stub() -> OAuthProviderStub:
+    """Provide a reusable OAuth provider stub that tests can customise."""
+
+    return OAuthProviderStub()
+
+
+@pytest.fixture
+def patch_oauth_provider_factory(monkeypatch):
+    """Patch the OAuthProviderFactory to return a provided stub instance."""
+
+    def _patch(provider: Any) -> Any:
+        def _create_provider(cls, provider_name: str) -> Any:  # type: ignore[unused-argument]
+            return provider
+
+        monkeypatch.setattr(
+            OAuthProviderFactory,
+            "create_provider",
+            classmethod(_create_provider),
+        )
+        return provider
+
+    return _patch
 
 
 @pytest.fixture

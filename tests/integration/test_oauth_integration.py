@@ -1,14 +1,14 @@
 """Integration tests for OAuth2 authentication with real database and endpoints."""
 
-import pytest
-from datetime import datetime, timezone
-from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import patch, AsyncMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
-from app.models.user import User
-from app.core.security import get_password_hash
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_async_db
+from app.core.security import get_password_hash
+from app.models.user import User
 
 
 class TestOAuth2Integration:
@@ -133,24 +133,9 @@ class TestOAuth2Integration:
 
         # Test inactive user
         # First create an inactive user in the database
-        from app.services.user import UserService
-        from app.schemas.user import UserCreate
-
-        service = UserService(
-            client_with_real_db.app.dependency_overrides[get_async_db]()
-        )
-
-        inactive_user_data = UserCreate(
-            email="inactive@example.com",
-            username="inactiveuser",
-            password="TestPass123!",
-            confirm_password="TestPass123!",
-            full_name="Inactive User",
-        )
-
         # Create user then deactivate
-        from app.models.user import User
         from app.core.security import get_password_hash
+        from app.models.user import User
 
         async_session = client_with_real_db.app.dependency_overrides[get_async_db]()
         inactive_user = User(
@@ -160,8 +145,8 @@ class TestOAuth2Integration:
             hashed_password=get_password_hash("TestPass123!"),
             is_active=False,  # Inactive user
             is_superuser=False,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         async_session.add(inactive_user)
@@ -219,8 +204,9 @@ class TestOAuth2Integration:
         self, client_with_real_db, sample_user_in_db
     ):
         """Test token expiration with real JWT tokens."""
+        from datetime import timedelta
+
         from app.core.security import create_access_token
-        from datetime import datetime, timedelta, timezone
 
         # Create an expired token
         token_data = {
@@ -256,8 +242,8 @@ class TestOAuth2Integration:
             hashed_password=get_password_hash("TestPass123!"),
             is_active=True,
             is_superuser=False,  # Not admin
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         admin_user = User(
@@ -267,8 +253,8 @@ class TestOAuth2Integration:
             hashed_password=get_password_hash("TestPass123!"),
             is_active=True,
             is_superuser=True,  # Admin
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         async_db_session.add(regular_user)
@@ -362,7 +348,7 @@ class TestOAuth2Integration:
 
         # If refresh token rotation is implemented, the old refresh token should be invalid
         # This tests your actual token rotation security
-        old_refresh_response = client_with_real_db.post(
+        _old_refresh_response = client_with_real_db.post(
             "/api/v1/auth/refresh",
             json={
                 "grant_type": "refresh_token",
@@ -372,7 +358,7 @@ class TestOAuth2Integration:
 
         # This should fail if you implement proper token rotation
         # Comment out if you don't have refresh token rotation yet
-        # assert old_refresh_response.status_code == 401
+        # assert _old_refresh_response.status_code == 401
 
         # Test invalid refresh token
         invalid_refresh_response = client_with_real_db.post(
@@ -385,13 +371,12 @@ class TestOAuth2Integration:
 
         assert invalid_refresh_response.status_code == 400
 
-    @patch("app.services.oauth.factory.OAuthProviderFactory.create_provider")
     @pytest.mark.asyncio
     async def test_google_oauth_integration_with_real_user_creation(
         self,
-        mock_create_provider,
         client_with_real_db,
         async_db_session: AsyncSession,
+        patch_oauth_provider_factory,
     ):
         """Test Google OAuth flow with real user creation in database."""
 
@@ -442,7 +427,7 @@ class TestOAuth2Integration:
             "email_verified": True,
         }
 
-        mock_create_provider.return_value = provider_mock
+        patch_oauth_provider_factory(provider_mock)
 
         token_payload = {
             "provider": "google",

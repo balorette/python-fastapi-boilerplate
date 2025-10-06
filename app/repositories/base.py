@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Generic, Optional, TypeVar
+from typing import Any, TypeVar
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
@@ -23,7 +23,7 @@ class DataIntegrityError(RepositoryError):
     """Raised when database constraints are violated."""
 
 
-class BaseRepository(Generic[ModelType]):
+class BaseRepository[ModelType]:
     """Reusable repository providing CRUD, filtering, and pagination helpers."""
 
     def __init__(self, model: type[ModelType], session: AsyncSession):
@@ -31,7 +31,7 @@ class BaseRepository(Generic[ModelType]):
         self.session = session
         self.logger = logging.getLogger(f"app.repositories.{model.__name__}")
 
-    def _resolve_session(self, session: Optional[AsyncSession]) -> AsyncSession:
+    def _resolve_session(self, session: AsyncSession | None) -> AsyncSession:
         if session is not None:
             return session
         if self.session is None:
@@ -45,8 +45,8 @@ class BaseRepository(Generic[ModelType]):
         id: Any,
         *,
         load_relationships: Any = None,
-        session: Optional[AsyncSession] = None,
-    ) -> Optional[ModelType]:
+        session: AsyncSession | None = None,
+    ) -> ModelType | None:
         """Get a single record by ID with optional relationship loading."""
 
         session = self._resolve_session(session)
@@ -75,8 +75,8 @@ class BaseRepository(Generic[ModelType]):
         id: Any,
         *,
         load_relationships: bool = False,
-        session: Optional[AsyncSession] = None,
-    ) -> Optional[ModelType]:
+        session: AsyncSession | None = None,
+    ) -> ModelType | None:
         """Alias for :meth:`get` to match newer repository interface."""
 
         return await self.get(
@@ -88,8 +88,8 @@ class BaseRepository(Generic[ModelType]):
         field_name: str,
         field_value: Any,
         *,
-        session: Optional[AsyncSession] = None,
-    ) -> Optional[ModelType]:
+        session: AsyncSession | None = None,
+    ) -> ModelType | None:
         """Return the first record matching ``field_name == field_value``."""
 
         session = self._resolve_session(session)
@@ -103,10 +103,10 @@ class BaseRepository(Generic[ModelType]):
         *,
         skip: int = 0,
         limit: int = 100,
-        filters: Optional[dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        session: Optional[AsyncSession] = None,
-        load_relationships: Optional[list[str]] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        session: AsyncSession | None = None,
+        load_relationships: list[str] | None = None,
     ) -> list[ModelType]:
         """Return multiple records with optional filtering and ordering."""
 
@@ -158,11 +158,11 @@ class BaseRepository(Generic[ModelType]):
     async def list(
         self,
         *,
-        pagination: Optional[PaginationParams] = None,
-        filters: Optional[dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        session: Optional[AsyncSession] = None,
-        load_relationships: Optional[list[str]] = None,
+        pagination: PaginationParams | None = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        session: AsyncSession | None = None,
+        load_relationships: list[str] | None = None,
     ) -> list[ModelType]:
         """Helper mirroring the newer repository interface."""
 
@@ -182,10 +182,10 @@ class BaseRepository(Generic[ModelType]):
         self,
         *,
         pagination: PaginationParams,
-        filters: Optional[dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        session: Optional[AsyncSession] = None,
-        load_relationships: Optional[list[str]] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        session: AsyncSession | None = None,
+        load_relationships: list[str] | None = None,
     ) -> PaginatedResponse[ModelType]:
         """Return a paginated response matching the newer interface."""
 
@@ -208,8 +208,8 @@ class BaseRepository(Generic[ModelType]):
         self,
         obj_in: dict[str, Any],
         *,
-        session: Optional[AsyncSession] = None,
-        user_id: Optional[str] = None,
+        session: AsyncSession | None = None,
+        user_id: str | None = None,
     ) -> ModelType:
         """Create a new record with commit and refresh semantics."""
 
@@ -241,7 +241,7 @@ class BaseRepository(Generic[ModelType]):
         db_obj: ModelType,
         obj_in: dict[str, Any],
         *,
-        session: Optional[AsyncSession] = None,
+        session: AsyncSession | None = None,
     ) -> ModelType:
         """Update an existing record with commit/refresh semantics."""
 
@@ -268,7 +268,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         id: Any,
         *,
-        session: Optional[AsyncSession] = None,
+        session: AsyncSession | None = None,
         soft_delete: bool = False,
     ) -> bool:
         """Delete a record by ID, optionally performing a soft delete."""
@@ -280,7 +280,7 @@ class BaseRepository(Generic[ModelType]):
 
         try:
             if soft_delete and hasattr(db_obj, "is_active"):
-                setattr(db_obj, "is_active", False)
+                db_obj.is_active = False
                 await session.commit()
                 await session.refresh(db_obj)
                 self.logger.debug("Soft deleted %s", self.model.__name__)
@@ -297,9 +297,9 @@ class BaseRepository(Generic[ModelType]):
 
     async def count_records(
         self,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         *,
-        session: Optional[AsyncSession] = None,
+        session: AsyncSession | None = None,
     ) -> int:
         """Count records with optional filtering."""
 
@@ -333,8 +333,8 @@ class BaseRepository(Generic[ModelType]):
     async def count(
         self,
         *,
-        filters: Optional[dict[str, Any]] = None,
-        session: Optional[AsyncSession] = None,
+        filters: dict[str, Any] | None = None,
+        session: AsyncSession | None = None,
     ) -> int:
         """Alias for :meth:`count_records` matching newer interface."""
 
@@ -344,7 +344,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         id: Any,
         *,
-        session: Optional[AsyncSession] = None,
+        session: AsyncSession | None = None,
     ) -> bool:
         """Check if record exists by ID."""
 
@@ -358,8 +358,8 @@ class BaseRepository(Generic[ModelType]):
         *,
         field_name: str,
         field_value: Any,
-        exclude_id: Optional[Any] = None,
-        session: Optional[AsyncSession] = None,
+        exclude_id: Any | None = None,
+        session: AsyncSession | None = None,
     ) -> bool:
         """Check if a record exists for the given field/value pair."""
 

@@ -238,12 +238,14 @@ grep "DATABASE_URL" .env
 This project uses **Ruff** for ultra-fast linting, formatting, and import sorting:
 
 ```bash
-# Run all code quality checks (10-100x faster than legacy tools)
-ruff check              # Lint code
-ruff format             # Format code
-ruff check --fix        # Auto-fix issues
+# Run all code quality checks with uv (matches CI)
+uv run ruff format --check .
+uv run ruff check .
 
-# Run all checks together
+# Auto-fix issues locally while iterating
+uv run ruff check --fix .
+
+# Run both formatting and linting with local helper
 ./scripts/lint.sh
 ```
 

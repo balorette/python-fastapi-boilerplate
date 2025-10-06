@@ -31,7 +31,7 @@
 **Context**: Phase 1 called out runtime warnings from `python-json-logger` imports. We began remediation so the logging stack no longer emits deprecation notices during tests and CI runs.
 
 **Actions**:
-- Updated `app/core/logging.py` to import `JsonFormatter` from `pythonjsonlogger.jsonlogger`, the modern path recommended by upstream.
+- Updated `app/core/logging.py` to import `JsonFormatter` from `pythonjsonlogger.json`, the modern path recommended by upstream.
 - Swapped the formatter base class to the new import to keep the structured logging pipeline intact without runtime shims.
 - Logged progress in the living backlog so the team can track that the warning remediation effort has started.
 
@@ -41,7 +41,7 @@
 - Provides a recorded audit trail for the broader warning remediation initiative in Phase 1.
 
 **Next Steps**:
-- Replace the deprecated `crypt` usage in the auth stack with `passlib` helpers.
+- Replace the deprecated `crypt` usage in the auth stack by relying on `bcrypt` directly rather than the stdlib shim.
 - Update Starlette 422 constant references once the framework upgrade path is confirmed.
 - Investigate the SQLAlchemy flush warning to determine whether repository patterns need adjustment.
 
@@ -89,7 +89,7 @@
 
 ## 2025-10-03 - Dependency Baseline & Documentation Audit
 
-**Context**: The previous documentation snapshot referenced future-dated work and an outdated test baseline. Running the suite locally surfaced missing runtime dependencies (`itsdangerous`, `typer`) and an incompatibility between `passlib` and `bcrypt>=4`. We needed to correct the dependency set, refresh the README/onboarding instructions, and realign the roadmap before starting RBAC work.
+**Context**: The previous documentation snapshot referenced future-dated work and an outdated test baseline. Running the suite locally surfaced missing runtime dependencies (`itsdangerous`, `typer`) and ultimately led us to remove the `passlib` dependency in favour of direct `bcrypt` usage. We needed to correct the dependency set, refresh the README/onboarding instructions, and realign the roadmap before starting RBAC work.
 
 **Actions**:
 - Added explicit pins for `itsdangerous`, `typer`, and `bcrypt>=3.2,<4.0` in `requirements.txt` / `pyproject.toml` to match the FastAPI stack.

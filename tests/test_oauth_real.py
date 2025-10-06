@@ -1,9 +1,9 @@
 """Real OAuth2 authentication tests aligned with the provider/factory flow."""
 
-import pytest
-from datetime import datetime, timezone
-from fastapi.testclient import TestClient
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
+
+from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token, verify_token
 from app.models.user import User
@@ -44,7 +44,7 @@ class TestOAuth2RealAuth:
         assert "invalid" in response.json()["detail"].lower()
 
     def test_protected_endpoint_with_real_jwt_validation(self, client: TestClient):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         test_user = {
             "id": 1,
             "username": "testuser",
@@ -152,7 +152,7 @@ class TestOAuth2RealAuth:
         ).status_code in (400, 422)
 
     def test_concurrent_token_usage(self, client: TestClient):
-        current = datetime.now(timezone.utc)
+        current = datetime.now(UTC)
         user_data = {
             "id": 1,
             "username": "testuser",
@@ -176,12 +176,11 @@ class TestOAuth2RealAuth:
         assert resp2.status_code == 200
         assert resp1.json()["id"] == resp2.json()["id"]
 
-    @patch("app.services.oauth.factory.OAuthProviderFactory.create_provider")
     async def test_google_oauth_token_exchange_flow(
         self,
-        mock_create_provider,
         client_with_real_db,
         async_db_session,
+        patch_oauth_provider_factory,
     ):
         provider_mock = AsyncMock()
         provider_mock.exchange_code_for_tokens.return_value = {
@@ -206,7 +205,7 @@ class TestOAuth2RealAuth:
             "name": "Google Test User",
             "email_verified": True,
         }
-        mock_create_provider.return_value = provider_mock
+        patch_oauth_provider_factory(provider_mock)
 
         token_response = client_with_real_db.post(
             "/api/v1/auth/token",

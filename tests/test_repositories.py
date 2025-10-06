@@ -1,31 +1,18 @@
 """Comprehensive tests for repository patterns."""
 
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.user import User
 from app.repositories.base import BaseRepository, DataIntegrityError
 from app.repositories.user import UserRepository
-from app.models.user import User
-from app.core.exceptions import NotFoundError, ConflictError
 
 
 class TestBaseRepository:
     """Test BaseRepository functionality."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock session for testing."""
-        session = AsyncMock(spec=AsyncSession)
-        session.execute = AsyncMock()
-        session.get = AsyncMock()
-        session.add = Mock()
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
-        session.delete = AsyncMock()
-        session.rollback = AsyncMock()
-        return session
 
     @pytest.fixture
     def base_repo(self, mock_session):
