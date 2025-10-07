@@ -1,12 +1,12 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.5.0
-**Last Updated**: 2025-10-10
+**Document Version**: 2.6.0
+**Last Updated**: 2025-10-07
 
-> **Status Snapshot (2025-10-10)**
-> - `pytest` → **210 passed / 0 failed / 210 total** (coverage report generated via `uv run pytest`).
-> - Coverage: **75%** — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, and CLI utilities (`app/cli.py`).
-> - Deprecation warnings surfaced (`pythonjsonlogger`, `crypt`, Starlette 422 constant) alongside an SAWarning during repository flushes — track remediation alongside coverage and CI work.
+> **Status Snapshot (2025-10-07)**
+> - `uv run pytest` → **210 passed / 1 failed / 211 total**; `TestUserService::test_update_user_success` is failing because the uniqueness guard only triggers one repository lookup instead of the expected email + username checks.
+> - Coverage: **75%** (goal ≥80%) — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, CLI helpers (`app/cli.py`), and OAuth provider flows.
+> - Runtime warnings persist: deprecated `crypt` usage, Starlette 422 constant references, and an SQLAlchemy `Session.add()` SAWarning emitted during flushes. The `pythonjsonlogger` import warning has been resolved, but the remaining items stay open until code changes land.
 
 The following backlog keeps the boilerplate modular, production-ready, and easy for new teams to adopt. Each section calls out the concrete steps required for completion.
 
@@ -31,13 +31,14 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [x] Expand RBAC regression coverage for high-traffic admin endpoints and document smoke scenarios.
 - [x] Document RBAC defaults and seeding expectations in contributor and operations guides.
 
-## 4. Testing & Tooling Refinement (In Progress)
-- [x] Restore `uv run pytest` to green by addressing remaining OAuth/auth integration failures and flaky fixtures.
-- [x] Enforce linting/formatting in CI: wire `uv run ruff check` and `ruff format --check`, update pre-commit hooks, and document workflow (CI workflow in progress).
+## 4. Testing & Tooling Refinement (At Risk)
+- [ ] Resolve the `UserService.update_user` regression: align the uniqueness guard with expectations (double `exists` check or spec adjustment) and restore the unit test to green.
+- [ ] Document the outcome in `docs/ai/spec.md` / lessons and add regression coverage for mixed email/username updates.
+- [ ] Restore `uv run pytest` to green and keep it stable via CI automation (GitHub Actions or equivalent) that runs `uv run ruff check` + `uv run pytest` using the uv virtualenv bootstrap.
+- [ ] Replace deprecated Python `crypt` usage, update Starlette 422 constant references, and address the SQLAlchemy `Session.add()` warning surfaced during flush operations.
 - [x] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
-- [x] Resolve pytest warning noise (Pydantic serializers, `datetime.utcnow()`) to keep future upgrades low-risk.
-- [x] Eliminate remaining warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt` usage, and updating Starlette 422 constant references; investigate SQLAlchemy `Session.add` warning seen during flush events.
-  - [x] Migrate structured logging to use `pythonjsonlogger.json.JsonFormatter` to remove import deprecation warnings.
+- [x] Resolve pytest warning noise (Pydantic serializers, timezone-aware datetimes) to keep future upgrades low-risk.
+- [x] Migrate structured logging to use `pythonjsonlogger.json.JsonFormatter` to remove import deprecation warnings.
 
 ## 5. Documentation & Developer Experience (Completed)
 - [x] Update docs (`README`, `docs/ai/*`, `docs/features/`) to reflect the unified repository/service patterns and observability stack.
