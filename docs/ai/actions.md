@@ -4,6 +4,33 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-11 - UserService Update Regression Fix
+
+**Context**: The suite was red because `UserService.update_user` only validated a single identifier during updates. The failing
+`TestUserService::test_update_user_success` highlighted that the uniqueness guard short-circuited after checking the incoming
+email, leaving the username unchecked and allowing conflicts through.
+
+**Actions**:
+- Updated `UserService.update_user` to validate both the email and username independently, defaulting to the persisted username
+  when callers do not submit one so that email-only updates still exercise both checks.
+- Re-ran `uv run pytest` to confirm all 211 tests now pass and no new warnings were introduced beyond the existing SQLAlchemy
+  flush advisory.
+- Captured the guard-rail expectations in `docs/ai/spec.md` so future work keeps the dual-lookup contract intact.
+
+**Decision**: Chose the dual lookup approach (Option A) using the existing repository `exists` helper. This avoided widening the
+repository surface area, kept the guard logic asynchronous, and matched the behaviour assumed by the current tests and service
+pattern.
+
+**Impact**:
+- Test suite is back to green (211/211) and the regression log is cleared.
+- Email and username updates now consistently prevent conflicts, even when only one field is being changed from the API layer.
+- Performance impact is negligible because the service performs two indexed lookups per update—identical to the create flow.
+
+**Next Steps**:
+- Triage the remaining warning backlog (deprecated crypt usage, Starlette 422 constant, SQLAlchemy flush advisory).
+- Consider enforcing composite uniqueness at the database level for additional defence-in-depth.
+- Expand coverage around the auth and database modules to push toward the 80% target.
+
 ## 2025-10-07 - Regression Audit & Documentation Realignment
 
 **Context**: Performed a full project health review ahead of roadmap planning. The latest `uv run pytest` surfaced a regression in `TestUserService::test_update_user_success`, indicating the update flow no longer runs the dual uniqueness checks expected by the specification/tests. Documentation was out-of-sync with this finding and still advertised a green suite.
