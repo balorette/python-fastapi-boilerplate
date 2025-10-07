@@ -1,8 +1,28 @@
 # Actions Log - FastAPI Enterprise Baseline
 
-**Document Version**: 1.4.0
+**Document Version**: 1.5.0
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
+
+## 2025-10-07 - Regression Audit & Documentation Realignment
+
+**Context**: Performed a full project health review ahead of roadmap planning. The latest `uv run pytest` surfaced a regression in `TestUserService::test_update_user_success`, indicating the update flow no longer runs the dual uniqueness checks expected by the specification/tests. Documentation was out-of-sync with this finding and still advertised a green suite.
+
+**Actions**:
+- Executed `uv run pytest --cov=app` to capture the failure details, coverage report, and persistent warnings (deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush behaviour).
+- Updated `docs/todo.md`, `docs/ai/improvement-plan.md`, and the README to reflect the failing test, 75% coverage, and outstanding warning remediation.
+- Added explicit backlog items for fixing the `UserService.update_user` regression, documenting the decision, and standing up CI to guard against future breaks.
+- Logged the review here so downstream contributors understand the regression source and documentation adjustments.
+
+**Impact**:
+- Documentation, roadmap, and README now accurately reflect the current project health, preventing false confidence.
+- The regression has a dedicated backlog item with clear resolution guidance (either double lookup or spec adjustment) plus follow-up documentation tasks.
+- CI enablement is prioritised to stop similar regressions from shipping unnoticed.
+
+**Next Steps**:
+- Implement the chosen fix for `UserService.update_user` and update the associated test/spec to match the intended behaviour.
+- Land CI automation that exercises `uv run ruff check` and `uv run pytest` on every push.
+- Continue the coverage push once the regression is resolved.
 
 ## 2025-10-10 - Service Blueprint Finalisation & Setup Verification
 
