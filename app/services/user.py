@@ -268,7 +268,7 @@ class UserService:
         # Validate username uniqueness, defaulting to the current username so
         # callers updating only email still trigger the guard.
         username_candidate = update_dict.get("username", user.username)
-        if username_candidate:
+        if username_candidate is not None:
             username_conflict = await self.repository.exists(
                 field_name="username",
                 field_value=username_candidate,
