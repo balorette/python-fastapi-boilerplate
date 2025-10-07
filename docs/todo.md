@@ -1,10 +1,10 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
 **Document Version**: 2.6.0
-**Last Updated**: 2025-10-07
+**Last Updated**: 2025-10-11
 
-> **Status Snapshot (2025-10-07)**
-> - `uv run pytest` → **210 passed / 1 failed / 211 total**; `TestUserService::test_update_user_success` is failing because the uniqueness guard only triggers one repository lookup instead of the expected email + username checks.
+> **Status Snapshot (2025-10-11)**
+> - `uv run pytest` → **211 passed / 0 failed / 211 total**; CI automation (`.github/workflows/ci.yml`) now enforces the green baseline on pushes and PRs targeting `main`.
 > - Coverage: **75%** (goal ≥80%) — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, CLI helpers (`app/cli.py`), and OAuth provider flows.
 > - Runtime warnings persist: deprecated `crypt` usage, Starlette 422 constant references, and an SQLAlchemy `Session.add()` SAWarning emitted during flushes. The `pythonjsonlogger` import warning has been resolved, but the remaining items stay open until code changes land.
 
@@ -34,7 +34,7 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 ## 4. Testing & Tooling Refinement (At Risk)
 - [ ] Resolve the `UserService.update_user` regression: align the uniqueness guard with expectations (double `exists` check or spec adjustment) and restore the unit test to green.
 - [ ] Document the outcome in `docs/ai/spec.md` / lessons and add regression coverage for mixed email/username updates.
-- [ ] Restore `uv run pytest` to green and keep it stable via CI automation (GitHub Actions or equivalent) that runs `uv run ruff check` + `uv run pytest` using the uv virtualenv bootstrap.
+- [x] Restore `uv run pytest` to green and keep it stable via CI automation (GitHub Actions or equivalent) that runs `uv sync`, `uv run ruff check ..`, `uv run ruff format --check ..`, and `uv run pytest` using the uv virtualenv bootstrap.
 - [ ] Replace deprecated Python `crypt` usage, update Starlette 422 constant references, and address the SQLAlchemy `Session.add()` warning surfaced during flush operations.
 - [x] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, timezone-aware datetimes) to keep future upgrades low-risk.

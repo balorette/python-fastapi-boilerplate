@@ -4,6 +4,22 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-11 - CI Automation Enablement
+
+**Context**: With the regression resolved and the suite green, we needed to prevent future slips by automating the uv-based quality gates.
+
+**Actions**:
+- Added `.github/workflows/ci.yml` to run on pushes and pull requests targeting `main`, provisioning Python 3.12 and installing `uv`.
+- Wired the workflow to execute `uv sync`, `uv run ruff check ..`, `uv run ruff format --check ..`, and `uv run pytest` so linting, formatting, and tests all gate changes.
+- Enabled caching of the uv environment to keep the job fast and aligned with local tooling.
+
+**Impact**:
+- Every push/PR now exercises the same lint, format, and test steps used locally, catching regressions before merge.
+- Aligns the repo with the documented uv-first tooling expectations and removes manual enforcement risk.
+
+**Next Steps**:
+- Continue the warning remediation and coverage uplift items from the backlog to reduce noise in CI runs.
+
 ## 2025-10-11 - UserService Update Regression Fix
 
 **Context**: The suite was red because `UserService.update_user` only validated a single identifier during updates. The failing
