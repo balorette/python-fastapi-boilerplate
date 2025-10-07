@@ -171,10 +171,11 @@ class User:
 - `get_users_paginated(skip: int, limit: int) -> List[User]`
 
 #### Validation Rules
-- Email must be unique and valid format
-- Username must be unique (if provided)
-- Password minimum 8 characters
-- Password must contain letter and number
+- Email must remain unique across all users and is validated on both create and update flows.
+- Username must remain unique across all users (including updates) and defaults to lowercase enforcement.
+- Update operations run independent uniqueness checks for email and username so email-only changes still validate both fields.
+- Conflicts surface as `ConflictError` (HTTP 409) responses with descriptive detail messages for API clients.
+- Passwords require a minimum of 8 characters and must contain at least one letter and one number.
 
 ### 4.2 AuthService
 

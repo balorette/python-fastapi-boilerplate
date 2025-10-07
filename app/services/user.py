@@ -253,23 +253,29 @@ class UserService:
 
         update_dict = user_data.model_dump(exclude_unset=True, exclude={"role_names"})
 
-        # Validate email uniqueness if being updated
-        if "email" in update_dict and await self.repository.exists(
-            field_name="email",
-            field_value=update_dict["email"],
-            exclude_id=user_id,
-        ):
-            raise ConflictError(f"Email {update_dict['email']} is already in use")
-
-        # Validate username uniqueness if being updated
-        if "username" in update_dict and await self.repository.exists(
-            field_name="username",
-            field_value=update_dict["username"],
-            exclude_id=user_id,
-        ):
-            raise ConflictError(
-                f"Username {update_dict['username']} is already taken"
+        # Validate email uniqueness regardless of whether it changed to ensure
+        # both identifiers remain globally unique.
+        email_candidate = update_dict.get("email", user.email)
+        if email_candidate is not None:
+            email_conflict = await self.repository.exists(
+                field_name="email",
+                field_value=email_candidate,
+                exclude_id=user_id,
             )
+            if email_conflict:
+                raise ConflictError(f"Email {email_candidate} is already in use")
+
+        # Validate username uniqueness, defaulting to the current username so
+        # callers updating only email still trigger the guard.
+        username_candidate = update_dict.get("username", user.username)
+        if username_candidate is not None:
+            username_conflict = await self.repository.exists(
+                field_name="username",
+                field_value=username_candidate,
+                exclude_id=user_id,
+            )
+            if username_conflict:
+                raise ConflictError(f"Username {username_candidate} is already taken")
 
         try:
             updated_user = await self.repository.update(user, update_dict)
