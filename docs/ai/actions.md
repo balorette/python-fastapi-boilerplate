@@ -28,7 +28,7 @@ pattern.
 
 **Next Steps**:
 - Triage the remaining warning backlog (deprecated crypt usage, Starlette 422 constant, SQLAlchemy flush advisory).
-- Consider enforcing composite uniqueness at the database level for additional defence-in-depth.
+- Consider enforcing individual unique constraints on both the email and username columns at the database level for additional defence-in-depth.
 - Expand coverage around the auth and database modules to push toward the 80% target.
 
 ## 2025-10-07 - Regression Audit & Documentation Realignment
