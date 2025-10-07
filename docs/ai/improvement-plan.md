@@ -1,8 +1,8 @@
 # FastAPI Enterprise Baseline - Improvement Plan
 
-**Document Version**: 1.4.0
-**Last Updated**: 2025-10-09
-**Status**: Active Development
+**Document Version**: 1.5.0
+**Last Updated**: 2025-10-07
+**Status**: Active Development (At Risk)
 
 ## Executive Summary
 
@@ -17,22 +17,23 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - Modern Python 3.12 target, Ruff-first tooling, and uv-backed workflows already standardised.
 
 **Current Gaps** ⚠️
-- `pytest` now runs clean locally (**210 passed**) but CI automation is still missing and should guard against regressions.
+- Latest regression run (`uv run pytest`) surfaces one failure (`TestUserService::test_update_user_success`) because the uniqueness guard only checks the email field. CI automation is still missing, so the breakage was caught manually.
 - Coverage sits at **75%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
-- Runtime warnings surfaced during the latest run (`pythonjsonlogger` import path, deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush warning) and require remediation alongside the coverage push.
+- Runtime warnings persist: deprecated `crypt` usage, Starlette 422 constant references, and an SQLAlchemy `Session.add()` warning emitted during flushes. The `pythonjsonlogger` import warning has been addressed, but the remaining clean-up is pending.
 - RBAC regression coverage should broaden to high-sensitivity admin endpoints now that dependency guard behaviour is locked in.
 
 ## Implementation Roadmap
 
 ### Phase 1: Test & Observability Stabilisation (Current Phase)
-**Status**: In Progress — objective is a green build and ≥80% coverage.
+**Status**: At Risk — regression introduced in `UserService.update_user`; objective remains a green build and ≥80% coverage.
 
 #### Remaining Tasks
+- [ ] Resolve the `UserService.update_user` uniqueness regression so the service double-checks conflicting identifiers (or updates the contract/tests accordingly) and the suite returns to green.
 - [ ] Backfill integration tests around `/api/v1/auth/login`, `/api/v1/auth/token`, and OAuth provider error paths to lift coverage in `auth.py`, `database.py`, and `app/services/oauth/`.
 - [ ] Expand RBAC test coverage for admin-only endpoints and document the smoke scenarios alongside seeded defaults.
 - [ ] Stand up CI with lint + test automation so regressions surface automatically.
-- [ ] Address new warnings by migrating to `pythonjsonlogger.json`, replacing Python `crypt`, updating Starlette 422 usage, and adjusting SQLAlchemy flush patterns when needed.
-  - [x] Update structured logging to import `JsonFormatter` from `pythonjsonlogger.json` to resolve the deprecation warning.
+- [ ] Replace deprecated Python `crypt` usage, update Starlette 422 constant references, and address the SQLAlchemy `Session.add()` warning seen during flush operations.
+- [x] Update structured logging to import `JsonFormatter` from `pythonjsonlogger.json` to resolve the deprecation warning.
 - [x] Replace deprecated `datetime.utcnow()` usage with timezone-aware alternatives and modern Pydantic serializers.
 - [x] Document structured logging rollout and health-check payloads in README/deployment guides.
 
@@ -84,6 +85,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 - Hardened secrets management and CI smoke tests.
 
 ## Tactical Focus Areas
+- **UserService Regression**: Align update logic and test expectations so email/username uniqueness checks run consistently and the service unit test returns to green.
 - **OAuth Debug Harness**: Seed temporary SQLite databases within regression fixtures before hitting auth endpoints.
 - **Coverage Push**: Target low-coverage modules surfaced by pytest-cov, especially `auth.py`, `database.py`, and CLI utilities.
 - **Deprecation Remediation**: ✅ Completed — timezone-aware timestamps and Pydantic V2 serializers now ship in production code.
@@ -92,7 +94,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ## Success Metrics
 
 ### Phase 1 Success Criteria
-- 🟡 `uv run pytest` returns green (0 failures).
+- 🔴 `uv run pytest` returns green (0 failures) and is enforced through CI.
 - 🟡 Code coverage ≥80%.
 - ✅ Authentication, repository, and service layers unified.
 - ✅ Tooling modernised (uv + Ruff).
@@ -106,14 +108,15 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ## Next Steps
 
 ### Immediate Actions (Next 1-2 Days)
-1. Raise auth/DB coverage by exercising refresh, error, and provider edge cases.
-2. Outline RBAC regression scenarios for admin endpoints and backfill docs detailing default role/permission seeding.
-3. Remediate the new warning set (pythonjsonlogger import, deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush behaviour) or document workarounds until fixes land.
+1. Fix the `UserService.update_user` regression (double identifier checks + updated tests/spec) to restore a green suite.
+2. Raise auth/DB coverage by exercising refresh, error, and provider edge cases.
+3. Outline RBAC regression scenarios for admin endpoints and backfill docs detailing default role/permission seeding.
+4. Remediate outstanding warnings (deprecated `crypt`, Starlette 422 constant, SQLAlchemy flush behaviour) or document workarounds until fixes land.
 
 ### Near-Term (This Sprint)
 1. Push coverage above 80% by focusing on the uncovered modules.
 2. Add GitHub Actions (or equivalent) workflow that runs `ruff check` and `pytest` against a uv environment, with uv caching for faster iterations.
-3. Publish refreshed setup docs explaining dependency pins (bcrypt, itsdangerous, typer) and the expected test baseline.
+3. Publish refreshed setup docs explaining dependency pins (bcrypt, itsdangerous, typer) and the expected test baseline (include guidance on the update-user regression fix once merged).
 
 ### Longer-Term (Post Phase 1)
 1. Kick off rate limiting and Redis caching work (Phase 2).
@@ -130,5 +133,5 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 ---
 
 **Document Status**: Living Document — updated as the project progresses.
-**Last Review**: 2025-10-04
-**Next Review**: Weekly during active development
+**Last Review**: 2025-10-07
+**Next Review**: Weekly during active development (or after any regression is detected)

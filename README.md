@@ -220,7 +220,7 @@ pytest tests/test_users.py -v
 uv run pytest --cov=app --cov-report=html
 ```
 
-Current baseline: `pytest --cov=app` → **202 passed / 0 failed** with coverage holding at ~74% (focus areas: `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, CLI helpers).
+Current regression snapshot: `uv run pytest --cov=app` → **210 passed / 1 failed** (`TestUserService::test_update_user_success`) with coverage holding at ~75% (focus areas: `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, CLI helpers).
 
 ### 🗃️ Additional Database Management
 
@@ -444,6 +444,7 @@ This will:
 
 After setup, consider implementing:
 
+- [ ] Resolve `UserService.update_user` uniqueness regression and stabilise CI coverage gates
 - [ ] Additional OAuth providers (GitHub, Microsoft, etc.)
 - [ ] Rate limiting and request throttling
 - [ ] Caching strategies with Redis
