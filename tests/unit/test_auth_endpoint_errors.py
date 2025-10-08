@@ -11,6 +11,8 @@ from fastapi import HTTPException
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
+)
+from app.core.exceptions import (
     ValidationError as AppValidationError,
 )
 from app.schemas.oauth import AuthorizationRequest, TokenRequest
