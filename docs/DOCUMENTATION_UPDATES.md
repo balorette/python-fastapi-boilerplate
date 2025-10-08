@@ -1,6 +1,7 @@
 # 📋 Documentation and Configuration Updates Summary
 
 ## 2025-10-03 — Dependency & Documentation Alignment
+- Executed `uv run pytest --cov=app` (253 passed, **82% coverage**) after adding dedicated auth/database/OAuth tests, and updated this log plus `docs/ai/improvement-plan.md` with the new baseline.
 - Added missing runtime dependencies (`itsdangerous`, `typer`) and pinned `bcrypt` to `<4` across `requirements.txt` and `pyproject.toml` so the FastAPI app and tests boot without manual intervention.
 - Regenerated the local test baseline (`pytest` → 202 passed, 74% coverage) and captured the results in `docs/todo.md` / `docs/ai/improvement-plan.md`.
 - Updated `README.md` to reflect the actual repository name, rediscovered metrics capabilities, and corrected Docker commands.

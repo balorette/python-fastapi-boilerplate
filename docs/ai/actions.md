@@ -175,6 +175,7 @@ pattern.
 **Actions**:
 - Added explicit pins for `itsdangerous`, `typer`, and `bcrypt>=3.2,<4.0` in `requirements.txt` / `pyproject.toml` to match the FastAPI stack.
 - Re-ran `pytest` after the dependency fixes, capturing a clean baseline (**202 passed**, 74% coverage) for reference in docs.
+- Follow-up run (`uv run pytest --cov=app`) after targeted auth/database/OAuth tests delivered **253 passed** and **82% coverage**, and the living docs were updated accordingly.
 - Updated `README.md` quick-start paths, feature descriptions, and Docker guidance to reflect the current repository layout.
 - Refreshed `docs/todo.md` and `docs/ai/improvement-plan.md` with accurate status snapshots, outstanding gaps, and immediate priorities.
 - Logged the work here to maintain an audit trail for downstream contributors.
