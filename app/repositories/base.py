@@ -50,6 +50,12 @@ class BaseRepository[ModelType]:
             session.info["_repository_write_lock"] = lock
         return lock
 
+    def get_session_write_lock(self, session: AsyncSession | None = None) -> asyncio.Lock:
+        """Expose the session-scoped lock so callers can orchestrate atomic flows."""
+
+        resolved = self._resolve_session(session)
+        return self._get_session_lock(resolved)
+
     async def get(
         self,
         id: Any,
@@ -220,6 +226,7 @@ class BaseRepository[ModelType]:
         *,
         session: AsyncSession | None = None,
         user_id: str | None = None,
+        use_lock: bool = True,
     ) -> ModelType:
         """Create a new record with commit and refresh semantics."""
 
@@ -232,7 +239,8 @@ class BaseRepository[ModelType]:
             db_obj.updated_by = user_id
 
         lock = self._get_session_lock(session)
-        async with lock:
+
+        async def _persist() -> ModelType:
             try:
                 session.add(db_obj)
                 await session.commit()
@@ -248,12 +256,18 @@ class BaseRepository[ModelType]:
                 self.logger.error("Unexpected error during create", exc_info=True)
                 raise RepositoryError(str(exc)) from exc
 
+        if use_lock:
+            async with lock:
+                return await _persist()
+        return await _persist()
+
     async def update(
         self,
         db_obj: ModelType,
         obj_in: dict[str, Any],
         *,
         session: AsyncSession | None = None,
+        use_lock: bool = True,
     ) -> ModelType:
         """Update an existing record with commit/refresh semantics."""
 
@@ -263,7 +277,8 @@ class BaseRepository[ModelType]:
                 setattr(db_obj, field, value)
 
         lock = self._get_session_lock(session)
-        async with lock:
+
+        async def _persist() -> ModelType:
             try:
                 await session.commit()
                 await session.refresh(db_obj)
@@ -278,12 +293,18 @@ class BaseRepository[ModelType]:
                 self.logger.error("Unexpected error during update", exc_info=True)
                 raise RepositoryError(str(exc)) from exc
 
+        if use_lock:
+            async with lock:
+                return await _persist()
+        return await _persist()
+
     async def delete(
         self,
         id: Any,
         *,
         session: AsyncSession | None = None,
         soft_delete: bool = False,
+        use_lock: bool = True,
     ) -> bool:
         """Delete a record by ID, optionally performing a soft delete."""
 
@@ -293,7 +314,8 @@ class BaseRepository[ModelType]:
             return False
 
         lock = self._get_session_lock(session)
-        async with lock:
+
+        async def _delete() -> bool:
             try:
                 if soft_delete and hasattr(db_obj, "is_active"):
                     db_obj.is_active = False
@@ -310,6 +332,11 @@ class BaseRepository[ModelType]:
                 await session.rollback()
                 self.logger.error("Error during delete", exc_info=True)
                 raise RepositoryError(str(exc)) from exc
+
+        if use_lock:
+            async with lock:
+                return await _delete()
+        return await _delete()
 
     async def count_records(
         self,

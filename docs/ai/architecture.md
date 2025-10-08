@@ -230,6 +230,13 @@ class UserRepository(BaseRepository[User]):
 - Centralizes query logic
 - Reusable generic operations
 
+#### Session-Scoped Concurrency Guard
+
+- `BaseRepository` exposes `get_session_write_lock()` which returns an asyncio `Lock` stored on `AsyncSession.info`.
+- CRUD helpers accept a `use_lock` flag (default `True`). The lock only wraps `session.add/commit/delete/refresh`, so CPU-bound prep work happens outside the critical section.
+- Services that need multi-step writes (like "check uniqueness → insert") acquire the session lock once, perform pre-flight checks, and call the repository helper with `use_lock=False`. This keeps the entire workflow atomic while avoiding nested locks.
+- Because the lock is scoped to a single `AsyncSession`, different sessions proceed in parallel, but concurrent writes within the same transaction boundary cannot interleave and trigger SQLAlchemy flush warnings.
+
 ### 2. Service Pattern
 
 ```python
