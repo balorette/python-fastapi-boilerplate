@@ -18,7 +18,7 @@ from app.services.user import UserService
 
 router = APIRouter()
 
-HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+HTTP_422_STATUS = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @router.get("/me", response_model=UserResponse)

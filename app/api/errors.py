@@ -22,7 +22,7 @@ from app.services.base import (
 
 logger = logging.getLogger(__name__)
 
-HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+HTTP_422_STATUS = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def _request_id_from(request: Request) -> str | None:
