@@ -31,7 +31,6 @@ class BaseRepository[ModelType]:
         self.model = model
         self.session = session
         self.logger = logging.getLogger(f"app.repositories.{model.__name__}")
-        self._write_lock = asyncio.Lock()
 
     def _resolve_session(self, session: AsyncSession | None) -> AsyncSession:
         if session is not None:
@@ -41,6 +40,15 @@ class BaseRepository[ModelType]:
                 "AsyncSession is not available for repository operation"
             )
         return self.session
+
+    def _get_session_lock(self, session: AsyncSession) -> asyncio.Lock:
+        """Return a lock scoped to the given session for serialized writes."""
+
+        lock = session.info.get("_repository_write_lock")
+        if lock is None:
+            lock = asyncio.Lock()
+            session.info["_repository_write_lock"] = lock
+        return lock
 
     async def get(
         self,
@@ -216,14 +224,15 @@ class BaseRepository[ModelType]:
         """Create a new record with commit and refresh semantics."""
 
         session = self._resolve_session(session)
-        async with self._write_lock:
-            db_obj = self.model(**obj_in)
+        db_obj = self.model(**obj_in)
 
-            if hasattr(db_obj, "created_by") and user_id:
-                db_obj.created_by = user_id
-            if hasattr(db_obj, "updated_by") and user_id:
-                db_obj.updated_by = user_id
+        if hasattr(db_obj, "created_by") and user_id:
+            db_obj.created_by = user_id
+        if hasattr(db_obj, "updated_by") and user_id:
+            db_obj.updated_by = user_id
 
+        lock = self._get_session_lock(session)
+        async with lock:
             try:
                 session.add(db_obj)
                 await session.commit()
@@ -249,11 +258,12 @@ class BaseRepository[ModelType]:
         """Update an existing record with commit/refresh semantics."""
 
         session = self._resolve_session(session)
-        async with self._write_lock:
-            for field, value in obj_in.items():
-                if hasattr(db_obj, field) and value is not None:
-                    setattr(db_obj, field, value)
+        for field, value in obj_in.items():
+            if hasattr(db_obj, field) and value is not None:
+                setattr(db_obj, field, value)
 
+        lock = self._get_session_lock(session)
+        async with lock:
             try:
                 await session.commit()
                 await session.refresh(db_obj)
@@ -282,7 +292,8 @@ class BaseRepository[ModelType]:
         if not db_obj:
             return False
 
-        async with self._write_lock:
+        lock = self._get_session_lock(session)
+        async with lock:
             try:
                 if soft_delete and hasattr(db_obj, "is_active"):
                     db_obj.is_active = False
