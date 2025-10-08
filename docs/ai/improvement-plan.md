@@ -18,7 +18,7 @@ This plan guides the ongoing evolution of the FastAPI enterprise baseline. The c
 
 **Current Gaps** ⚠️
 - Latest regression run (`uv run pytest`) surfaces one failure (`TestUserService::test_update_user_success`) because the uniqueness guard only checks the email field. CI automation is still missing, so the breakage was caught manually.
-- Coverage sits at **75%** (goal ≥80%); low-coverage zones include `app/api/v1/endpoints/auth.py`, `app/core/database.py`, OAuth providers, and the CLI helpers.
+- Coverage now sits at **82%** (goal ≥80% achieved); remaining low-coverage zones include `app/api/v1/endpoints/health.py`, the CLI helpers, and select database utilities earmarked for follow-up.
 - Runtime warnings persist: deprecated `crypt` usage, Starlette 422 constant references, and an SQLAlchemy `Session.add()` warning emitted during flushes. The `pythonjsonlogger` import warning has been addressed, but the remaining clean-up is pending.
 - RBAC regression coverage should broaden to high-sensitivity admin endpoints now that dependency guard behaviour is locked in.
 
