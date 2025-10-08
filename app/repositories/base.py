@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, TypeVar
 
@@ -39,6 +40,21 @@ class BaseRepository[ModelType]:
                 "AsyncSession is not available for repository operation"
             )
         return self.session
+
+    def _get_session_lock(self, session: AsyncSession) -> asyncio.Lock:
+        """Return a lock scoped to the given session for serialized writes."""
+
+        lock = session.info.get("_repository_write_lock")
+        if lock is None:
+            lock = asyncio.Lock()
+            session.info["_repository_write_lock"] = lock
+        return lock
+
+    def get_session_write_lock(self, session: AsyncSession | None = None) -> asyncio.Lock:
+        """Expose the session-scoped lock so callers can orchestrate atomic flows."""
+
+        resolved = self._resolve_session(session)
+        return self._get_session_lock(resolved)
 
     async def get(
         self,
@@ -210,6 +226,7 @@ class BaseRepository[ModelType]:
         *,
         session: AsyncSession | None = None,
         user_id: str | None = None,
+        use_lock: bool = True,
     ) -> ModelType:
         """Create a new record with commit and refresh semantics."""
 
@@ -221,20 +238,28 @@ class BaseRepository[ModelType]:
         if hasattr(db_obj, "updated_by") and user_id:
             db_obj.updated_by = user_id
 
-        try:
-            session.add(db_obj)
-            await session.commit()
-            await session.refresh(db_obj)
-            self.logger.debug("Created %s", self.model.__name__)
-            return db_obj
-        except IntegrityError as exc:
-            await session.rollback()
-            self.logger.error("Integrity error during create", exc_info=True)
-            raise DataIntegrityError(str(exc)) from exc
-        except Exception as exc:
-            await session.rollback()
-            self.logger.error("Unexpected error during create", exc_info=True)
-            raise RepositoryError(str(exc)) from exc
+        lock = self._get_session_lock(session)
+
+        async def _persist() -> ModelType:
+            try:
+                session.add(db_obj)
+                await session.commit()
+                await session.refresh(db_obj)
+                self.logger.debug("Created %s", self.model.__name__)
+                return db_obj
+            except IntegrityError as exc:
+                await session.rollback()
+                self.logger.error("Integrity error during create", exc_info=True)
+                raise DataIntegrityError(str(exc)) from exc
+            except Exception as exc:
+                await session.rollback()
+                self.logger.error("Unexpected error during create", exc_info=True)
+                raise RepositoryError(str(exc)) from exc
+
+        if use_lock:
+            async with lock:
+                return await _persist()
+        return await _persist()
 
     async def update(
         self,
@@ -242,6 +267,7 @@ class BaseRepository[ModelType]:
         obj_in: dict[str, Any],
         *,
         session: AsyncSession | None = None,
+        use_lock: bool = True,
     ) -> ModelType:
         """Update an existing record with commit/refresh semantics."""
 
@@ -250,19 +276,27 @@ class BaseRepository[ModelType]:
             if hasattr(db_obj, field) and value is not None:
                 setattr(db_obj, field, value)
 
-        try:
-            await session.commit()
-            await session.refresh(db_obj)
-            self.logger.debug("Updated %s", self.model.__name__)
-            return db_obj
-        except IntegrityError as exc:
-            await session.rollback()
-            self.logger.error("Integrity error during update", exc_info=True)
-            raise DataIntegrityError(str(exc)) from exc
-        except Exception as exc:
-            await session.rollback()
-            self.logger.error("Unexpected error during update", exc_info=True)
-            raise RepositoryError(str(exc)) from exc
+        lock = self._get_session_lock(session)
+
+        async def _persist() -> ModelType:
+            try:
+                await session.commit()
+                await session.refresh(db_obj)
+                self.logger.debug("Updated %s", self.model.__name__)
+                return db_obj
+            except IntegrityError as exc:
+                await session.rollback()
+                self.logger.error("Integrity error during update", exc_info=True)
+                raise DataIntegrityError(str(exc)) from exc
+            except Exception as exc:
+                await session.rollback()
+                self.logger.error("Unexpected error during update", exc_info=True)
+                raise RepositoryError(str(exc)) from exc
+
+        if use_lock:
+            async with lock:
+                return await _persist()
+        return await _persist()
 
     async def delete(
         self,
@@ -270,6 +304,7 @@ class BaseRepository[ModelType]:
         *,
         session: AsyncSession | None = None,
         soft_delete: bool = False,
+        use_lock: bool = True,
     ) -> bool:
         """Delete a record by ID, optionally performing a soft delete."""
 
@@ -278,22 +313,30 @@ class BaseRepository[ModelType]:
         if not db_obj:
             return False
 
-        try:
-            if soft_delete and hasattr(db_obj, "is_active"):
-                db_obj.is_active = False
-                await session.commit()
-                await session.refresh(db_obj)
-                self.logger.debug("Soft deleted %s", self.model.__name__)
-                return True
+        lock = self._get_session_lock(session)
 
-            await session.delete(db_obj)
-            await session.commit()
-            self.logger.debug("Deleted %s", self.model.__name__)
-            return True
-        except Exception as exc:
-            await session.rollback()
-            self.logger.error("Error during delete", exc_info=True)
-            raise RepositoryError(str(exc)) from exc
+        async def _delete() -> bool:
+            try:
+                if soft_delete and hasattr(db_obj, "is_active"):
+                    db_obj.is_active = False
+                    await session.commit()
+                    await session.refresh(db_obj)
+                    self.logger.debug("Soft deleted %s", self.model.__name__)
+                    return True
+
+                await session.delete(db_obj)
+                await session.commit()
+                self.logger.debug("Deleted %s", self.model.__name__)
+                return True
+            except Exception as exc:
+                await session.rollback()
+                self.logger.error("Error during delete", exc_info=True)
+                raise RepositoryError(str(exc)) from exc
+
+        if use_lock:
+            async with lock:
+                return await _delete()
+        return await _delete()
 
     async def count_records(
         self,

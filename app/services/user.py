@@ -61,33 +61,49 @@ class UserService:
 
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with validation."""
-        # Check if email already exists
-        if await self.repository.exists(
-            field_name="email", field_value=user_data.email
-        ):
-            raise ConflictError(f"Email {user_data.email} is already registered")
+        session = self.repository.session
+        lock = self.repository.get_session_write_lock(session)
 
-        # Check if username already exists
-        if await self.repository.exists(
-            field_name="username", field_value=user_data.username
-        ):
-            raise ConflictError(f"Username {user_data.username} is already taken")
+        async with lock:
+            # Check if email already exists
+            if await self.repository.exists(
+                field_name="email",
+                field_value=user_data.email,
+                session=session,
+            ):
+                raise ConflictError(
+                    f"Email {user_data.email} is already registered"
+                )
 
-        # Create user data
-        user_dict = user_data.model_dump(
-            exclude={"password", "confirm_password", "roles", "role_names"}
-        )
-        user_dict["hashed_password"] = self._hash_password(user_data.password)
+            # Check if username already exists
+            if await self.repository.exists(
+                field_name="username",
+                field_value=user_data.username,
+                session=session,
+            ):
+                raise ConflictError(
+                    f"Username {user_data.username} is already taken"
+                )
 
-        try:
-            user = await self.repository.create(user_dict)
-            await self._assign_roles(
-                user,
-                self._determine_role_names(user.is_superuser, user_data.role_names),
+            # Create user data
+            user_dict = user_data.model_dump(
+                exclude={"password", "confirm_password", "roles", "role_names"}
             )
-            return user
-        except Exception as exc:
-            raise ValidationError(f"Failed to create user: {str(exc)}") from exc
+            user_dict["hashed_password"] = self._hash_password(user_data.password)
+
+            try:
+                user = await self.repository.create(
+                    user_dict, session=session, use_lock=False
+                )
+                await self._assign_roles(
+                    user,
+                    self._determine_role_names(
+                        user.is_superuser, user_data.role_names
+                    ),
+                )
+                return user
+            except Exception as exc:
+                raise ValidationError(f"Failed to create user: {str(exc)}") from exc
 
     async def get_user(
         self,

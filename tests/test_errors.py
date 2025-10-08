@@ -11,7 +11,7 @@ from app.services.base import (
     EntityNotFoundError,
 )
 
-HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+HTTP_422_STATUS = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 def _build_app() -> FastAPI:
     app = FastAPI()

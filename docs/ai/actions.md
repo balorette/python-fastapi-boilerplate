@@ -4,6 +4,24 @@
 **Created**: 2025-01-25
 **Purpose**: Record all changes, decisions, and their rationale
 
+## 2025-10-11 - Warning Remediation
+
+**Context**: Pytest surfaced warnings for deprecated stdlib `crypt` helpers, Starlette's legacy 422 constant, and an SQLAlchemy advisory about calling `Session.add()` during concurrent flushes.
+
+**Actions**:
+- Audited password hashing to ensure every code path uses the existing bcrypt helpers and removed the legacy stdlib `crypt` access that triggered deprecation noise.
+- Standardised every HTTP 422 response on `status.HTTP_422_UNPROCESSABLE_CONTENT`, eliminating fallback constants that Starlette deprecated.
+- Added an async write lock to the base repository so create/update/delete operations cannot interleave while a flush runs, clearing the SQLAlchemy warning observed in concurrency tests.
+- Confirmed `uv run pytest` now completes without the previous warning trio (only the known asyncio event-loop warning remains).
+
+**Impact**:
+- Test and CI logs are clean of deprecated `crypt`/Starlette/SQLAlchemy messages, reducing noise for contributors.
+- Repository writes are deterministic under concurrent load, avoiding undefined SQLAlchemy behaviour.
+- The backlog warning item is complete, unblocking the coverage uplift work.
+
+**Next Steps**:
+- Focus on the coverage uplift for auth, database, and OAuth flows outlined in the backlog.
+
 ## 2025-10-11 - CI Automation Enablement
 
 **Context**: With the regression resolved and the suite green, we needed to prevent future slips by automating the uv-based quality gates.
