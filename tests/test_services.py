@@ -797,9 +797,10 @@ class TestUserService:
         get_result = self.create_mock_result(scalar_return=sample_user)
         mock_session.execute.return_value = get_result
 
-        with patch.object(
-            user_service, "_verify_password", return_value=False
-        ), pytest.raises(AuthenticationError, match="Invalid credentials"):
+        with (
+            patch.object(user_service, "_verify_password", return_value=False),
+            pytest.raises(AuthenticationError, match="Invalid credentials"),
+        ):
             await user_service.authenticate_user("testuser", "wrongpass")
 
     @pytest.mark.asyncio
@@ -812,9 +813,10 @@ class TestUserService:
         get_result = self.create_mock_result(scalar_return=sample_user)
         mock_session.execute.return_value = get_result
 
-        with patch.object(
-            user_service, "_verify_password", return_value=True
-        ), pytest.raises(AuthorizationError, match="Account is disabled"):
+        with (
+            patch.object(user_service, "_verify_password", return_value=True),
+            pytest.raises(AuthorizationError, match="Account is disabled"),
+        ):
             await user_service.authenticate_user("testuser", "testpass123")
 
     # Test get_user_stats method

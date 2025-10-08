@@ -50,7 +50,9 @@ class BaseRepository[ModelType]:
             session.info["_repository_write_lock"] = lock
         return lock
 
-    def get_session_write_lock(self, session: AsyncSession | None = None) -> asyncio.Lock:
+    def get_session_write_lock(
+        self, session: AsyncSession | None = None
+    ) -> asyncio.Lock:
         """Expose the session-scoped lock so callers can orchestrate atomic flows."""
 
         resolved = self._resolve_session(session)

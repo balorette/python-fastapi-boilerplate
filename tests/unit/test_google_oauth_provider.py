@@ -18,7 +18,9 @@ ORIGINAL_PROVIDERS = OAuthProviderFactory._providers.copy()
 class StubResponse:
     """Minimal HTTPX response stub with configurable behaviour."""
 
-    def __init__(self, json_data: dict[str, Any] | None = None, *, text: str = "") -> None:
+    def __init__(
+        self, json_data: dict[str, Any] | None = None, *, text: str = ""
+    ) -> None:
         self._json = json_data or {}
         self.text = text
         self._raise_exc: httpx.HTTPStatusError | None = None
@@ -69,7 +71,9 @@ class AsyncClientStub:
         assert self.post_response is not None
         return self.post_response
 
-    async def get(self, url: str, headers: dict[str, str] | None = None) -> StubResponse:
+    async def get(
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> StubResponse:
         self.get_calls.append((url, headers))
         if self.get_exception:
             raise self.get_exception

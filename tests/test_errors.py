@@ -13,6 +13,7 @@ from app.services.base import (
 
 HTTP_422_STATUS = status.HTTP_422_UNPROCESSABLE_CONTENT
 
+
 def _build_app() -> FastAPI:
     app = FastAPI()
     app.add_middleware(RequestLoggingMiddleware)

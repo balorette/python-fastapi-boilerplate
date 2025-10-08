@@ -71,9 +71,7 @@ class UserService:
                 field_value=user_data.email,
                 session=session,
             ):
-                raise ConflictError(
-                    f"Email {user_data.email} is already registered"
-                )
+                raise ConflictError(f"Email {user_data.email} is already registered")
 
             # Check if username already exists
             if await self.repository.exists(
@@ -81,9 +79,7 @@ class UserService:
                 field_value=user_data.username,
                 session=session,
             ):
-                raise ConflictError(
-                    f"Username {user_data.username} is already taken"
-                )
+                raise ConflictError(f"Username {user_data.username} is already taken")
 
             # Create user data
             user_dict = user_data.model_dump(
@@ -97,9 +93,7 @@ class UserService:
                 )
                 await self._assign_roles(
                     user,
-                    self._determine_role_names(
-                        user.is_superuser, user_data.role_names
-                    ),
+                    self._determine_role_names(user.is_superuser, user_data.role_names),
                 )
                 return user
             except Exception as exc:

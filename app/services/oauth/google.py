@@ -77,9 +77,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                     f"Token exchange failed: {exc.response.text}"
                 ) from exc
             except Exception as exc:
-                raise AuthenticationError(
-                    f"Token exchange error: {str(exc)}"
-                ) from exc
+                raise AuthenticationError(f"Token exchange error: {str(exc)}") from exc
 
     async def validate_id_token(self, id_token_str: str) -> dict[str, Any]:
         """Validate Google ID token using Google's public keys."""
@@ -98,9 +96,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
         except ValueError as exc:
             raise AuthenticationError(f"Invalid ID token: {str(exc)}") from exc
         except Exception as exc:
-            raise AuthenticationError(
-                f"ID token validation error: {str(exc)}"
-            ) from exc
+            raise AuthenticationError(f"ID token validation error: {str(exc)}") from exc
 
     async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Get user information from Google's userinfo endpoint."""
@@ -116,9 +112,7 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                     f"Failed to get user info: {exc.response.text}"
                 ) from exc
             except Exception as exc:
-                raise AuthenticationError(
-                    f"User info error: {str(exc)}"
-                ) from exc
+                raise AuthenticationError(f"User info error: {str(exc)}") from exc
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh Google access token."""
@@ -139,6 +133,4 @@ class GoogleOAuthProvider(BaseOAuthProvider):
                     f"Token refresh failed: {exc.response.text}"
                 ) from exc
             except Exception as exc:
-                raise AuthenticationError(
-                    f"Token refresh error: {str(exc)}"
-                ) from exc
+                raise AuthenticationError(f"Token refresh error: {str(exc)}") from exc

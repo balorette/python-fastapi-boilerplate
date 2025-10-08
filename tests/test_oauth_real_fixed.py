@@ -5,7 +5,6 @@ These tests focus on realistic authentication flows while avoiding the asyncio
 event loop issues that plague the complex PostgreSQL integration tests.
 """
 
-
 from app.core.security import create_access_token, verify_token
 
 

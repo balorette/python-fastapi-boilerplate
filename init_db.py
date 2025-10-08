@@ -9,6 +9,7 @@ from pathlib import Path
 app_dir = Path(__file__).parent / "app"
 sys.path.insert(0, str(app_dir.parent))
 
+
 async def main():
     """Initialize the database."""
     import app.models  # noqa: F401  # Ensure models are loaded before table creation

@@ -26,9 +26,7 @@ async def test_authorize_local_requires_credentials(monkeypatch) -> None:
         def __init__(self, *_args, **_kwargs) -> None:  # pragma: no cover - simple stub
             pass
 
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.auth.AuthService", DummyAuthService
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.auth.AuthService", DummyAuthService)
 
     from app.api.v1.endpoints.auth import authorize
 
@@ -57,9 +55,7 @@ async def test_authorize_local_authorization_error(monkeypatch) -> None:
         async def authorize_local(self, *_args, **_kwargs):
             raise AuthorizationError("forbidden")
 
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.auth.AuthService", DummyAuthService
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.auth.AuthService", DummyAuthService)
 
     from app.api.v1.endpoints.auth import authorize
 
@@ -87,9 +83,7 @@ async def test_authorize_local_app_validation_error(monkeypatch) -> None:
         def __init__(self, *_args, **_kwargs) -> None:
             raise AppValidationError("invalid payload")
 
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.auth.AuthService", FailingAuthService
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.auth.AuthService", FailingAuthService)
 
     from app.api.v1.endpoints.auth import authorize
 
@@ -118,9 +112,7 @@ async def test_authorize_local_generic_error(monkeypatch) -> None:
         async def authorize_local(self, *_args, **_kwargs):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.auth.AuthService", FailingAuthService
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.auth.AuthService", FailingAuthService)
 
     from app.api.v1.endpoints.auth import authorize
 
@@ -181,9 +173,7 @@ async def test_token_local_exchange_authentication_error(monkeypatch) -> None:
         async def exchange_local_authorization_code(self, *_args, **_kwargs):
             raise AuthenticationError("bad code")
 
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.auth.AuthService", DummyAuthService
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.auth.AuthService", DummyAuthService)
 
     from app.api.v1.endpoints.auth import token
 

@@ -15,9 +15,7 @@ def register_error_handlers(app: FastAPI) -> None:
     """Register all error handlers with the FastAPI app."""
 
     @app.exception_handler(APIError)
-    async def api_exception_handler(
-        request: Request, exc: APIError
-    ) -> JSONResponse:
+    async def api_exception_handler(request: Request, exc: APIError) -> JSONResponse:
         """Handle custom API exceptions."""
         logger.error(
             "API Exception: %s - Path: %s",

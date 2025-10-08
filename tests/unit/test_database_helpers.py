@@ -60,7 +60,9 @@ async def test_get_async_db_retries_then_yields_session(monkeypatch):
 
     sleep_calls: list[float] = []
 
-    async def fake_sleep(delay: float) -> None:  # pragma: no cover - exercised indirectly
+    async def fake_sleep(
+        delay: float,
+    ) -> None:  # pragma: no cover - exercised indirectly
         sleep_calls.append(delay)
 
     monkeypatch.setattr(database, "AsyncSessionLocal", fake_session_factory)
@@ -149,7 +151,10 @@ def test_get_engine_config_postgresql(monkeypatch):
 
     assert engine_kwargs["poolclass"].__name__ == "QueuePool"
     assert engine_kwargs["pool_pre_ping"] is True
-    assert async_engine_kwargs["connect_args"]["server_settings"]["application_name"] == "fastapi_app"
+    assert (
+        async_engine_kwargs["connect_args"]["server_settings"]["application_name"]
+        == "fastapi_app"
+    )
 
 
 @pytest.mark.asyncio
@@ -367,7 +372,9 @@ async def test_init_database_health_failure(monkeypatch):
         return {"connection_status": "error"}
 
     monkeypatch.setattr(database, "check_database_health", fake_check_health)
-    monkeypatch.setattr(database, "settings", SimpleNamespace(DATABASE_TYPE="sqlite", is_sqlite=True))
+    monkeypatch.setattr(
+        database, "settings", SimpleNamespace(DATABASE_TYPE="sqlite", is_sqlite=True)
+    )
 
     with pytest.raises(RuntimeError):
         await database.init_database()
