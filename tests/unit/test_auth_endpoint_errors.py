@@ -298,7 +298,9 @@ async def test_token_external_user_info_failure(
 
 
 @pytest.mark.asyncio
-async def test_token_external_invalid_user_info(monkeypatch, oauth_provider_stub, patch_oauth_provider_factory) -> None:
+async def test_token_external_invalid_user_info(
+    monkeypatch, oauth_provider_stub, patch_oauth_provider_factory
+) -> None:
     """Malformed provider payloads should return HTTP 502."""
 
     oauth_provider_stub.tokens_response = {"access_token": "token"}
