@@ -1,11 +1,11 @@
 # Task Tracking - FastAPI Enterprise Baseline
 
-**Document Version**: 2.6.0
-**Last Updated**: 2025-10-11
+**Document Version**: 2.7.0
+**Last Updated**: 2025-10-14
 
-> **Status Snapshot (2025-10-11)**
-> - `uv run pytest` → **211 passed / 0 failed / 211 total**; CI automation (`.github/workflows/ci.yml`) now enforces the green baseline on pushes and PRs targeting `main`.
-> - Coverage: **75%** (goal ≥80%) — biggest gaps remain in `app/api/v1/endpoints/auth.py`, `app/core/database.py`, CLI helpers (`app/cli.py`), and OAuth provider flows.
+> **Status Snapshot (2025-10-14)**
+> - `pytest` → **253 passed / 0 failed / 253 total** ✅; CI automation (`.github/workflows/ci.yml`) enforces the green baseline on pushes and PRs targeting `main`.
+> - Coverage: **82%** (goal ≥80% ACHIEVED ✅) — remaining gaps are in `app/api/v1/endpoints/health.py` (64%), `app/core/database.py` (71%), CLI helpers (`app/cli.py` at 51%), and OAuth provider flows (`app/services/oauth/google.py` at 99%).
 > - Runtime warnings have been cleared: bcrypt now backs all password helpers, 422 responses rely on `HTTP_422_UNPROCESSABLE_CONTENT`, and repository writes guard concurrent `Session.add()` usage. Only the known asyncio test ResourceWarning remains.
 
 The following backlog keeps the boilerplate modular, production-ready, and easy for new teams to adopt. Each section calls out the concrete steps required for completion.
@@ -31,10 +31,10 @@ The following backlog keeps the boilerplate modular, production-ready, and easy 
 - [x] Expand RBAC regression coverage for high-traffic admin endpoints and document smoke scenarios.
 - [x] Document RBAC defaults and seeding expectations in contributor and operations guides.
 
-## 4. Testing & Tooling Refinement (At Risk)
-- [ ] Resolve the `UserService.update_user` regression: align the uniqueness guard with expectations (double `exists` check or spec adjustment) and restore the unit test to green.
-- [ ] Document the outcome in `docs/ai/spec.md` / lessons and add regression coverage for mixed email/username updates.
-- [x] Restore `uv run pytest` to green and keep it stable via CI automation (GitHub Actions or equivalent) that runs `uv sync`, `uv run ruff check ..`, `uv run ruff format --check ..`, and `uv run pytest` using the uv virtualenv bootstrap.
+## 4. Testing & Tooling Refinement (Completed ✅)
+- [x] Resolve the `UserService.update_user` regression: align the uniqueness guard with expectations (double `exists` check or spec adjustment) and restore the unit test to green.
+- [x] Document the outcome in `docs/ai/spec.md` / lessons and add regression coverage for mixed email/username updates.
+- [x] Restore `pytest` to green and keep it stable via CI automation (GitHub Actions or equivalent) that runs `uv sync`, `uv run ruff check ..`, `uv run ruff format --check ..`, and `uv run pytest` using the uv virtualenv bootstrap.
 - [x] Replace deprecated Python `crypt` usage, update Starlette 422 constant references, and address the SQLAlchemy `Session.add()` warning surfaced during flush operations.
 - [x] Replace brittle mocks with shared pytest fixtures/factories for services, repositories, and OAuth providers to improve readability and reuse.
 - [x] Resolve pytest warning noise (Pydantic serializers, timezone-aware datetimes) to keep future upgrades low-risk.
