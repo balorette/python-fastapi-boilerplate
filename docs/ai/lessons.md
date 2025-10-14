@@ -1,8 +1,25 @@
 # Lessons Learned - FastAPI Enterprise Baseline
 
-**Document Version**: 1.1.0
+**Document Version**: 1.2.0
 **Created**: 2025-01-25  
+**Last Updated**: 2025-10-14
 **Purpose**: Capture insights, mistakes avoided, and best practices discovered
+
+## Recent Insights (2025-10-14)
+
+### 0. Documentation Drift Prevention
+**Lesson**: Documentation can quickly become stale even with active development—regular verification against actual state is essential  
+**Context**: Found documentation claiming 211 tests and 75% coverage when actual state was 253 tests and 82% coverage, with "At Risk" status despite all goals being achieved  
+**Outcome**: Comprehensive review revealed Phase 1 was complete but undocumented for 3 days  
+**Application**: Schedule regular documentation audits (weekly during active development) that compare documented state against actual measurements  
+
+**Key Insight**: Documentation drift creates false urgency and hides real accomplishments. Automate documentation checks where possible—run test counts, coverage reports, and CI status in documentation update scripts.
+
+**Recommendations**:
+- Add documentation verification to PR checklists
+- Include test count and coverage in automated status updates
+- Review all "Last Updated" dates during sprint retrospectives
+- Consider automation that updates status snapshots from CI results
 
 ## Project Insights
 
