@@ -45,3 +45,4 @@ rich>=13.5.0
 
 # Optional: Redis for caching
 redis>=5.0.0
+urllib3>=2.6.0 # not directly required, pinned by Snyk to avoid a vulnerability
