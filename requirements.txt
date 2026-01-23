@@ -46,3 +46,4 @@ rich>=13.5.0
 # Optional: Redis for caching
 redis>=5.0.0
 urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
+pyasn1>=0.6.2 # not directly required, pinned by Snyk to avoid a vulnerability
